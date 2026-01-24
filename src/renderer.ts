@@ -125,8 +125,7 @@ export class TemplateRenderer implements Renderer {
 
 export function toFileName(name: string): string {
 	return name
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/[^a-zA-Z0-9]+/g, "-")
 		.replace(/^-+|-+$/g, "")
 		.replace(/-{2,}/g, "-");
 }

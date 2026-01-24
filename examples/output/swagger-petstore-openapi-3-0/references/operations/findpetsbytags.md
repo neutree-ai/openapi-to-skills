@@ -22,7 +22,7 @@ Multiple tags can be provided with comma separated strings. Use tag1, tag2, tag3
 
 **Success Response Schema:**
 
-Array of [Pet](../schemas/pet/pet.md)
+Array of [Pet](../schemas/Pet/Pet.md)
 
 ## Security
 

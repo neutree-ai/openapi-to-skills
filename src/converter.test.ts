@@ -82,8 +82,8 @@ describe("convertOpenAPIToSkill - directory structure", () => {
 			writer,
 		});
 
-		expect(mkdirCalls).toContain("/out/test-api/references/schemas/user");
-		expect(mkdirCalls).toContain("/out/test-api/references/schemas/pet");
+		expect(mkdirCalls).toContain("/out/test-api/references/schemas/User");
+		expect(mkdirCalls).toContain("/out/test-api/references/schemas/Pet");
 	});
 });
 
@@ -128,7 +128,7 @@ describe("convertOpenAPIToSkill - file writing", () => {
 			c.path.includes("/resources/users.md"),
 		);
 		const operationFile = writeFileCalls.find((c) =>
-			c.path.includes("/operations/getusers.md"),
+			c.path.includes("/operations/getUsers.md"),
 		);
 
 		expect(resourceFile).toBeDefined();
@@ -154,13 +154,13 @@ describe("convertOpenAPIToSkill - file writing", () => {
 		});
 
 		const indexFile = writeFileCalls.find((c) =>
-			c.path.includes("/schemas/user/_index.md"),
+			c.path.includes("/schemas/User/_index.md"),
 		);
 		const schemaFile1 = writeFileCalls.find((c) =>
-			c.path.includes("/schemas/user/user.md"),
+			c.path.includes("/schemas/User/User.md"),
 		);
 		const schemaFile2 = writeFileCalls.find((c) =>
-			c.path.includes("/schemas/user/userinput.md"),
+			c.path.includes("/schemas/User/UserInput.md"),
 		);
 
 		expect(indexFile).toBeDefined();

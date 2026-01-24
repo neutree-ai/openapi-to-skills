@@ -13,28 +13,29 @@ import {
 // =============================================================================
 
 describe("toFileName", () => {
-	test("converts to lowercase", () => {
-		expect(toFileName("UserProfile")).toBe("userprofile");
+	test("preserves case", () => {
+		expect(toFileName("UserProfile")).toBe("UserProfile");
+		expect(toFileName("GetCustomersCustomer")).toBe("GetCustomersCustomer");
 	});
 
 	test("replaces spaces with hyphens", () => {
-		expect(toFileName("User Profile")).toBe("user-profile");
+		expect(toFileName("User Profile")).toBe("User-Profile");
 	});
 
 	test("removes special characters", () => {
-		expect(toFileName("User@Profile!")).toBe("user-profile");
+		expect(toFileName("User@Profile!")).toBe("User-Profile");
 	});
 
 	test("collapses multiple hyphens", () => {
-		expect(toFileName("User---Profile")).toBe("user-profile");
+		expect(toFileName("User---Profile")).toBe("User-Profile");
 	});
 
 	test("trims leading and trailing hyphens", () => {
-		expect(toFileName("--User--")).toBe("user");
+		expect(toFileName("--User--")).toBe("User");
 	});
 
 	test("handles mixed special characters", () => {
-		expect(toFileName("My Awesome API!")).toBe("my-awesome-api");
+		expect(toFileName("My Awesome API!")).toBe("My-Awesome-API");
 	});
 });
 

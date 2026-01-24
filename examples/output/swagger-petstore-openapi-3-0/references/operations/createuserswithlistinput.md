@@ -8,7 +8,7 @@
 
 **Content Types:** `application/json`
 
-**Schema:** Array of [User](../schemas/user/user.md)
+**Schema:** Array of [User](../schemas/User/User.md)
 
 ## Responses
 
@@ -19,5 +19,5 @@
 
 **Success Response Schema:**
 
-[User](../schemas/user/user.md)
+[User](../schemas/User/User.md)
 

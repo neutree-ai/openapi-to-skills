@@ -22,7 +22,7 @@ Multiple status values can be provided with comma separated strings.
 
 **Success Response Schema:**
 
-Array of [Pet](../schemas/pet/pet.md)
+Array of [Pet](../schemas/Pet/Pet.md)
 
 ## Security
 
