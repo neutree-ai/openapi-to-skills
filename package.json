@@ -1,64 +1,64 @@
 {
-  "name": "openapi-to-skills",
-  "version": "0.1.0",
-  "description": "Convert OpenAPI specifications to Agent Skills format with progressive disclosure",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "bin": {
-    "openapi-to-skills": "./dist/src/cli.js"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist",
-    "templates",
-    "README.md",
-    "LICENSE"
-  ],
-  "scripts": {
-    "build": "rm -rf dist && tsc && cp -r templates dist/",
-    "dev": "bun run src/cli.ts",
-    "test": "bun test",
-    "snapshot:update": "bun run scripts/update-snapshots.ts",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
-    "prepublishOnly": "npm run build"
-  },
-  "keywords": [
-    "openapi",
-    "agent",
-    "skills",
-    "ai",
-    "llm",
-    "api",
-    "documentation",
-    "converter"
-  ],
-  "author": "Neutree Developers",
-  "license": "Apache-2.0",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/neutree-ai/openapi-to-skills.git"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.3.12",
-    "@types/node": "^20",
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "citty": "^0.2.0",
-    "consola": "^3.4.2",
-    "eta": "^4.5.0",
-    "openapi-types": "^12.1.3",
-    "yaml": "^2.8.0"
-  }
+	"name": "openapi-to-skills",
+	"version": "0.1.0",
+	"description": "Convert OpenAPI specifications to Agent Skills format with progressive disclosure",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"bin": {
+		"openapi-to-skills": "./dist/src/cli.js"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"templates",
+		"README.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"build": "rm -rf dist && tsc && cp -r templates dist/",
+		"dev": "bun run src/cli.ts",
+		"test": "bun test",
+		"snapshot:update": "bun run scripts/update-snapshots.ts",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"format": "biome format --write .",
+		"prepublishOnly": "npm run build"
+	},
+	"keywords": [
+		"openapi",
+		"agent",
+		"skills",
+		"ai",
+		"llm",
+		"api",
+		"documentation",
+		"converter"
+	],
+	"author": "Neutree Developers",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/neutree-ai/openapi-to-skills.git"
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.3.12",
+		"@types/node": "^20",
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"citty": "^0.2.0",
+		"consola": "^3.4.2",
+		"eta": "^4.5.0",
+		"openapi-types": "^12.1.3",
+		"yaml": "^2.8.0"
+	}
 }
