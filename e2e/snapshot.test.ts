@@ -92,7 +92,11 @@ describe("e2e snapshot tests", async () => {
 
 				// Find actual output directory (first subdir)
 				const actualOutputs = await readdir(outputDir);
-				const actualDir = join(outputDir, actualOutputs[0]!);
+				const firstOutput = actualOutputs[0];
+				if (!firstOutput) {
+					throw new Error(`No output generated for ${spec}`);
+				}
+				const actualDir = join(outputDir, firstOutput);
 
 				// Read both directories
 				actual = await readDirRecursive(actualDir);
