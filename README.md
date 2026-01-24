@@ -11,7 +11,7 @@ Agent Skills solves this by structuring documentation for on-demand reading. Age
 ## Features
 
 - **Semantic structure** - Output organized by resources, operations, and schemas, enabling agents to load only relevant sections
-- **Smart grouping** - Operations grouped by tags, schemas grouped by naming prefix
+- **Smart grouping** - Operations grouped by tags or path prefix (auto-detected), schemas grouped by naming prefix
 - **Filtering** - Include/exclude by tags, paths, or deprecated status
 - **Customizable templates** - Override default Eta templates for custom output format
 
@@ -33,6 +33,7 @@ bunx openapi-to-skills ./openapi.yaml -o ./output
 | `--exclude-tags` | | Exclude specified tags (comma-separated) |
 | `--exclude-paths` | | Exclude paths matching prefixes (comma-separated) |
 | `--exclude-deprecated` | | Exclude deprecated operations |
+| `--group-by` | `-g` | How to group operations: `tags`, `path`, or `auto` (default: `auto`) |
 | `--templates` | `-t` | Custom templates directory |
 | `--force` | `-f` | Overwrite existing output directory |
 | `--quiet` | `-q` | Suppress output except errors |
@@ -49,12 +50,51 @@ bunx openapi-to-skills ./openapi.yaml -o ./output
     authentication.md      # Auth schemes (if any)
 ```
 
+### External References
+
+If your OpenAPI spec contains external `$ref` references (e.g., `./common.yaml#/components/schemas/Error`), bundle them first:
+
+```bash
+npx swagger-cli bundle ./api.yaml -o ./bundled.yaml
+npx openapi-to-skills ./bundled.yaml -o ./output
+```
+
+## Programmatic API
+
+The package exports `convertOpenAPIToSkill` for integration into build pipelines or custom tooling:
+
+```typescript
+import { convertOpenAPIToSkill } from 'openapi-to-skills';
+
+const spec = { /* OpenAPI spec object */ };
+
+await convertOpenAPIToSkill(spec, {
+  outputDir: './output',
+  parser: {
+    skillName: 'my-api',
+    filter: {
+      includeTags: ['users', 'orders'],
+      excludeDeprecated: true,
+    },
+  },
+});
+```
+
+For advanced use cases, individual components (`createParser`, `createRenderer`, `createWriter`) are also exported.
+
 ## Examples
 
 See the [examples](./examples) directory for sample input and output:
 
-- [`examples/input/petstore.yaml`](./examples/input/petstore.yaml) - Swagger Petstore OpenAPI spec
-- [`examples/output/swagger-petstore-openapi-3-0/`](./examples/output/swagger-petstore-openapi-3-0/) - Generated skill output
+| Input | Output | Scale |
+|-------|--------|-------|
+| [petstore.yaml](./examples/input/petstore.yaml) | [swagger-petstore-openapi-3-0/](./examples/output/swagger-petstore-openapi-3-0/) | 3 resources, 19 operations |
+| [github.yaml](./examples/input/github.yaml) | [github-v3-rest-api/](./examples/output/github-v3-rest-api/) | 43 resources, 1,078 operations |
+
+## Roadmap
+
+- [ ] Detect unresolved external `$ref` and warn users
+- [ ] Support fetching OpenAPI specs from URL
 
 ## Contributing
 

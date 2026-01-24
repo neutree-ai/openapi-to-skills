@@ -139,11 +139,20 @@ export interface OAuthFlowDocument {
 // Parser Options
 // =============================================================================
 
+export type GroupByStrategy = "tags" | "path" | "auto";
+
 export interface ParserOptions {
 	/** Skill name override */
 	skillName?: string;
 	/** Filter options */
 	filter?: ParserFilter;
+	/**
+	 * How to group operations into resources:
+	 * - 'tags': Group by OpenAPI tags (fallback to 'default' if no tags)
+	 * - 'path': Group by first path segment (after stripping version prefixes)
+	 * - 'auto': Use tags if available, otherwise use path (default)
+	 */
+	groupBy?: GroupByStrategy;
 }
 
 export interface ParserFilter {
