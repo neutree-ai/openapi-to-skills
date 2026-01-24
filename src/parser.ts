@@ -120,11 +120,7 @@ export class Parser {
 				if (filter.excludeDeprecated && operation.deprecated) continue;
 
 				// Determine resource name(s) based on groupBy strategy
-				const resourceNames = this.getResourceNames(
-					path,
-					operation,
-					groupBy,
-				);
+				const resourceNames = this.getResourceNames(path, operation, groupBy);
 
 				for (const resourceName of resourceNames) {
 					// Check tag inclusion/exclusion (applies to resource names)
@@ -188,10 +184,7 @@ export class Parser {
 	 */
 	private extractResourceFromPath(path: string): string {
 		// Strip common version prefixes
-		const stripped = path.replace(
-			/^\/(api\/)?(v\d+\/)?/i,
-			"/",
-		);
+		const stripped = path.replace(/^\/(api\/)?(v\d+\/)?/i, "/");
 
 		// Get first path segment
 		const segments = stripped.split("/").filter(Boolean);
