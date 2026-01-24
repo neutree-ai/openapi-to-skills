@@ -1,0 +1,44 @@
+# Authentication
+
+This document describes the authentication methods supported by this API.
+
+<% it.schemes.forEach(scheme => { -%>
+## <%= scheme.name %>
+
+**Type:** <%= scheme.type %>
+
+<% if (scheme.description) { -%>
+<%= scheme.description %>
+
+<% } -%>
+<% if (scheme.type === "apiKey") { -%>
+- **In:** <%= scheme.in %>
+
+<% } else if (scheme.type === "http") { -%>
+- **Scheme:** <%= scheme.scheme %>
+<% if (scheme.bearerFormat) { -%>
+- **Bearer Format:** <%= scheme.bearerFormat %>
+<% } -%>
+
+<% } else if (scheme.type === "oauth2" && scheme.flows) { -%>
+<% scheme.flows.forEach(flow => { -%>
+**<%= flow.name %> flow:**
+<% if (flow.authorizationUrl) { -%>
+- Authorization URL: <%= flow.authorizationUrl %>
+<% } -%>
+<% if (flow.tokenUrl) { -%>
+- Token URL: <%= flow.tokenUrl %>
+<% } -%>
+<% if (Object.keys(flow.scopes).length > 0) { -%>
+- Scopes:
+<% Object.entries(flow.scopes).forEach(([scope, desc]) => { -%>
+  - `<%= scope %>`: <%= desc %>
+<% }) -%>
+<% } -%>
+
+<% }) -%>
+<% } else if (scheme.type === "openIdConnect") { -%>
+- **OpenID Connect URL:** <%= scheme.openIdConnectUrl %>
+
+<% } -%>
+<% }) -%>

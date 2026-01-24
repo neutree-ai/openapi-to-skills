@@ -1,0 +1,9 @@
+# <%= it.prefix %> Schemas
+
+<%= it.schemas.length %> schemas in this group.
+
+| Schema | Type | Description |
+|--------|------|-------------|
+<% it.schemas.forEach(schema => { -%>
+| [<%= schema.name %>](<%= it.toFileName(schema.name) %>.md) | <%= schema.type %> | <%= (schema.description ?? "").substring(0, 50) %> |
+<% }) -%>

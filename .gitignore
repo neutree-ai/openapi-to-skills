@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+out/
+*.tgz
+
+# Generated output (except examples)
+output/
+!examples/output/
+
+# Config files
+!package.json
+!tsconfig.json
+!biome.json
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Claude Code
+.claude/
+
+# Cache
+.cache/
+*.tsbuildinfo
+.eslintcache
+
+# Coverage
+coverage/
+*.lcov
