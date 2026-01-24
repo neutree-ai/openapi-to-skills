@@ -6,7 +6,7 @@ import { defineCommand, runMain } from "citty";
 import { consola } from "consola";
 import { parse as parseYaml } from "yaml";
 import { convertOpenAPIToSkill } from "./converter.js";
-import type { OpenAPISpec } from "./types.js";
+import type { GroupByStrategy, OpenAPISpec } from "./types.js";
 
 const main = defineCommand({
 	meta: {
@@ -52,6 +52,13 @@ const main = defineCommand({
 		excludePaths: {
 			type: "string",
 			description: "Exclude paths matching these prefixes (comma-separated)",
+		},
+		groupBy: {
+			type: "string",
+			alias: "g",
+			description:
+				"How to group operations: 'tags' (use OpenAPI tags), 'path' (use first path segment), 'auto' (tags if available, else path)",
+			default: "auto",
 		},
 		force: {
 			type: "boolean",
@@ -130,11 +137,21 @@ const main = defineCommand({
 
 		consola.start("Converting to Agent Skill...");
 
+		// Validate groupBy option
+		const groupBy = args.groupBy as GroupByStrategy;
+		if (!["tags", "path", "auto"].includes(groupBy)) {
+			consola.error(
+				`Invalid --group-by value: ${groupBy}. Must be 'tags', 'path', or 'auto'.`,
+			);
+			process.exit(1);
+		}
+
 		await convertOpenAPIToSkill(spec, {
 			outputDir: args.output,
 			templateDir: args.templates,
 			parser: {
 				skillName: args.name,
+				groupBy,
 				filter: {
 					includeTags: args.includeTags?.split(",").map((t) => t.trim()),
 					excludeTags: args.excludeTags?.split(",").map((t) => t.trim()),

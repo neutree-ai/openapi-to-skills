@@ -1,6 +1,7 @@
 import type {
 	AuthSchemeDocument,
 	FieldDocument,
+	GroupByStrategy,
 	OAuthFlowDocument,
 	OpenAPISpec,
 	OperationDocument,
@@ -43,12 +44,13 @@ type HttpMethod = (typeof HTTP_METHODS)[number];
 export class Parser {
 	parse(spec: OpenAPISpec, options: ParserOptions = {}): SkillDocument {
 		const filter = options.filter ?? {};
+		const groupBy = options.groupBy ?? "auto";
 
 		// Parse meta
 		const meta = this.parseMeta(spec, options.skillName);
 
-		// Parse resources (operations grouped by tag)
-		const resources = this.parseResources(spec, filter);
+		// Parse resources (operations grouped by tag or path)
+		const resources = this.parseResources(spec, filter, groupBy);
 
 		// Parse schema groups
 		const schemaGroups = this.parseSchemaGroups(spec);
@@ -93,6 +95,7 @@ export class Parser {
 	private parseResources(
 		spec: OpenAPISpec,
 		filter: ParserFilter,
+		groupBy: GroupByStrategy,
 	): ResourceDocument[] {
 		const tagDescriptions = new Map<string, string>();
 		if (spec.tags) {
@@ -116,22 +119,32 @@ export class Parser {
 				// Check deprecated exclusion
 				if (filter.excludeDeprecated && operation.deprecated) continue;
 
-				const tags = operation.tags ?? ["default"];
+				// Determine resource name(s) based on groupBy strategy
+				const resourceNames = this.getResourceNames(
+					path,
+					operation,
+					groupBy,
+				);
 
-				for (const tag of tags) {
-					// Check tag inclusion/exclusion
-					if (!this.isTagIncluded(tag, filter)) continue;
+				for (const resourceName of resourceNames) {
+					// Check tag inclusion/exclusion (applies to resource names)
+					if (!this.isTagIncluded(resourceName, filter)) continue;
 
-					if (!resourceMap.has(tag)) {
-						resourceMap.set(tag, {
-							tag,
-							description: tagDescriptions.get(tag),
+					if (!resourceMap.has(resourceName)) {
+						resourceMap.set(resourceName, {
+							tag: resourceName,
+							description: tagDescriptions.get(resourceName),
 							operations: [],
 						});
 					}
 
-					const opDoc = this.parseOperation(path, method, operation, tag);
-					resourceMap.get(tag)?.operations.push(opDoc);
+					const opDoc = this.parseOperation(
+						path,
+						method,
+						operation,
+						resourceName,
+					);
+					resourceMap.get(resourceName)?.operations.push(opDoc);
 				}
 			}
 		}
@@ -140,6 +153,60 @@ export class Parser {
 		return [...resourceMap.values()].sort(
 			(a, b) => b.operations.length - a.operations.length,
 		);
+	}
+
+	private getResourceNames(
+		path: string,
+		operation: OperationObject,
+		groupBy: GroupByStrategy,
+	): string[] {
+		switch (groupBy) {
+			case "tags":
+				return operation.tags ?? ["default"];
+
+			case "path":
+				return [this.extractResourceFromPath(path)];
+
+			case "auto": {
+				// Use tags if available, otherwise use path
+				if (operation.tags && operation.tags.length > 0) {
+					return operation.tags;
+				}
+				return [this.extractResourceFromPath(path)];
+			}
+		}
+	}
+
+	/**
+	 * Extract resource name from path by taking the first segment
+	 * after stripping common version prefixes.
+	 *
+	 * Examples:
+	 * - /v1/accounts/{id} -> accounts
+	 * - /api/v2/users -> users
+	 * - /customers/{id}/orders -> customers
+	 */
+	private extractResourceFromPath(path: string): string {
+		// Strip common version prefixes
+		const stripped = path.replace(
+			/^\/(api\/)?(v\d+\/)?/i,
+			"/",
+		);
+
+		// Get first path segment
+		const segments = stripped.split("/").filter(Boolean);
+		const firstSegment = segments[0];
+
+		if (!firstSegment) {
+			return "default";
+		}
+
+		// Remove path parameters (e.g., {id})
+		if (firstSegment.startsWith("{")) {
+			return "default";
+		}
+
+		return firstSegment;
 	}
 
 	private parseOperation(

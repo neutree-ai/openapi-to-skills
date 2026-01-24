@@ -12,6 +12,7 @@ export { createRenderer, TemplateRenderer } from "./src/renderer.js";
 export type {
 	// Options
 	ConvertOptions,
+	GroupByStrategy,
 	// OpenAPI types
 	OpenAPISpec,
 	OperationDocument,

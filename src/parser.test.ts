@@ -124,7 +124,7 @@ describe("Parser.parse - resources", () => {
 		expect(pets?.operations).toHaveLength(1);
 	});
 
-	test("uses 'default' tag when no tags provided", () => {
+	test("uses 'default' tag when no tags provided (auto mode)", () => {
 		const spec = createMinimalSpec({
 			paths: {
 				"/health": {
@@ -133,7 +133,24 @@ describe("Parser.parse - resources", () => {
 			},
 		});
 
-		const doc = parser.parse(spec);
+		// With 'auto' mode, no tags means it falls back to path-based grouping
+		const doc = parser.parse(spec, { groupBy: "auto" });
+
+		expect(doc.resources).toHaveLength(1);
+		expect(doc.resources[0]?.tag).toBe("health");
+	});
+
+	test("uses 'default' tag when no tags provided (tags mode)", () => {
+		const spec = createMinimalSpec({
+			paths: {
+				"/health": {
+					get: { operationId: "healthCheck", responses: {} },
+				},
+			},
+		});
+
+		// With 'tags' mode, no tags means it falls back to 'default'
+		const doc = parser.parse(spec, { groupBy: "tags" });
 
 		expect(doc.resources).toHaveLength(1);
 		expect(doc.resources[0]?.tag).toBe("default");
@@ -557,5 +574,185 @@ describe("Parser.parse - authSchemes", () => {
 		const doc = parser.parse(spec);
 
 		expect(doc.authSchemes).toEqual([]);
+	});
+});
+
+// =============================================================================
+// GroupBy Strategy
+// =============================================================================
+
+describe("Parser.parse - groupBy", () => {
+	const parser = new Parser();
+
+	describe("groupBy: 'tags'", () => {
+		test("uses tags when available", () => {
+			const spec = createMinimalSpec({
+				paths: {
+					"/users": { get: { tags: ["users"], responses: {} } },
+					"/pets": { get: { tags: ["pets"], responses: {} } },
+				},
+			});
+
+			const doc = parser.parse(spec, { groupBy: "tags" });
+
+			expect(doc.resources.map((r) => r.tag).sort()).toEqual(["pets", "users"]);
+		});
+
+		test("falls back to 'default' when no tags", () => {
+			const spec = createMinimalSpec({
+				paths: {
+					"/v1/accounts": { get: { responses: {} } },
+					"/v1/customers": { get: { responses: {} } },
+				},
+			});
+
+			const doc = parser.parse(spec, { groupBy: "tags" });
+
+			expect(doc.resources).toHaveLength(1);
+			expect(doc.resources[0]?.tag).toBe("default");
+			expect(doc.resources[0]?.operations).toHaveLength(2);
+		});
+	});
+
+	describe("groupBy: 'path'", () => {
+		test("groups by first path segment", () => {
+			const spec = createMinimalSpec({
+				paths: {
+					"/users": { get: { tags: ["users"], responses: {} } },
+					"/users/{id}": { get: { tags: ["users"], responses: {} } },
+					"/pets": { get: { tags: ["pets"], responses: {} } },
+				},
+			});
+
+			// Even with tags, path mode should use path segments
+			const doc = parser.parse(spec, { groupBy: "path" });
+
+			expect(doc.resources.map((r) => r.tag).sort()).toEqual(["pets", "users"]);
+			const users = doc.resources.find((r) => r.tag === "users");
+			expect(users?.operations).toHaveLength(2);
+		});
+
+		test("strips version prefixes like /v1/", () => {
+			const spec = createMinimalSpec({
+				paths: {
+					"/v1/accounts": { get: { responses: {} } },
+					"/v1/accounts/{id}": { get: { responses: {} } },
+					"/v1/customers": { get: { responses: {} } },
+				},
+			});
+
+			const doc = parser.parse(spec, { groupBy: "path" });
+
+			expect(doc.resources.map((r) => r.tag).sort()).toEqual([
+				"accounts",
+				"customers",
+			]);
+		});
+
+		test("strips /api/v2/ prefix", () => {
+			const spec = createMinimalSpec({
+				paths: {
+					"/api/v2/products": { get: { responses: {} } },
+					"/api/v2/orders": { get: { responses: {} } },
+				},
+			});
+
+			const doc = parser.parse(spec, { groupBy: "path" });
+
+			expect(doc.resources.map((r) => r.tag).sort()).toEqual([
+				"orders",
+				"products",
+			]);
+		});
+
+		test("handles root path as default", () => {
+			const spec = createMinimalSpec({
+				paths: {
+					"/": { get: { responses: {} } },
+				},
+			});
+
+			const doc = parser.parse(spec, { groupBy: "path" });
+
+			expect(doc.resources).toHaveLength(1);
+			expect(doc.resources[0]?.tag).toBe("default");
+		});
+
+		test("handles path parameter as first segment", () => {
+			const spec = createMinimalSpec({
+				paths: {
+					"/{tenantId}/resources": { get: { responses: {} } },
+				},
+			});
+
+			const doc = parser.parse(spec, { groupBy: "path" });
+
+			expect(doc.resources).toHaveLength(1);
+			expect(doc.resources[0]?.tag).toBe("default");
+		});
+	});
+
+	describe("groupBy: 'auto' (default)", () => {
+		test("uses tags when available", () => {
+			const spec = createMinimalSpec({
+				paths: {
+					"/v1/accounts": { get: { tags: ["Account"], responses: {} } },
+					"/v1/customers": { get: { tags: ["Customer"], responses: {} } },
+				},
+			});
+
+			const doc = parser.parse(spec, { groupBy: "auto" });
+
+			expect(doc.resources.map((r) => r.tag).sort()).toEqual([
+				"Account",
+				"Customer",
+			]);
+		});
+
+		test("falls back to path when no tags", () => {
+			const spec = createMinimalSpec({
+				paths: {
+					"/v1/accounts": { get: { responses: {} } },
+					"/v1/accounts/{id}": { get: { responses: {} } },
+					"/v1/customers": { get: { responses: {} } },
+				},
+			});
+
+			const doc = parser.parse(spec, { groupBy: "auto" });
+
+			expect(doc.resources.map((r) => r.tag).sort()).toEqual([
+				"accounts",
+				"customers",
+			]);
+		});
+
+		test("mixed: uses tags for tagged ops, path for untagged", () => {
+			const spec = createMinimalSpec({
+				paths: {
+					"/v1/accounts": { get: { tags: ["Accounts"], responses: {} } },
+					"/v1/customers": { get: { responses: {} } }, // no tags
+				},
+			});
+
+			const doc = parser.parse(spec, { groupBy: "auto" });
+
+			expect(doc.resources.map((r) => r.tag).sort()).toEqual([
+				"Accounts",
+				"customers",
+			]);
+		});
+
+		test("is the default when groupBy not specified", () => {
+			const spec = createMinimalSpec({
+				paths: {
+					"/v1/accounts": { get: { responses: {} } },
+				},
+			});
+
+			const doc = parser.parse(spec); // no options
+
+			// Should use path-based grouping since no tags
+			expect(doc.resources[0]?.tag).toBe("accounts");
+		});
 	});
 });
