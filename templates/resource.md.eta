@@ -1,0 +1,13 @@
+# <%= it.tag %>
+
+<% if (it.description) { -%>
+<%= it.description %>
+
+<% } -%>
+## Operations
+
+| Method | Path | Summary | Details |
+|--------|------|---------|----------|
+<% it.operations.forEach(op => { -%>
+| <%= op.method %> | `<%= op.path %>` | <%= op.summary ?? "" %> | [View](../operations/<%= it.toFileName(op.operationId) %>.md) |
+<% }) -%>

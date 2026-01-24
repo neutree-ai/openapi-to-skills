@@ -1,0 +1,72 @@
+# <%= it.method %> <%= it.path %>
+
+**Resource:** [<%= it.tag %>](../resources/<%= it.toFileName(it.tag) %>.md)
+<% if (it.summary) { -%>
+**<%= it.summary %>**
+<% } -%>
+**Operation ID:** `<%= it.operationId %>`
+<% if (it.deprecated) { -%>
+⚠️ **Deprecated**
+<% } -%>
+<% if (it.description && it.description !== it.summary) { %>
+<%= it.description %>
+<% } -%>
+
+<% if (it.parameters.length > 0) { -%>
+## Parameters
+
+| Name | In | Type | Required | Description |
+|------|------|------|----------|-------------|
+<% it.parameters.forEach(param => { -%>
+| `<%= param.name %>` | <%= param.in %> | <%= param.type %> | <%= param.required ? "Yes" : "No" %> | <%= param.description ?? "" %> |
+<% }) -%>
+
+<% } -%>
+<% if (it.requestBody) { -%>
+## Request Body
+
+<% if (it.requestBody.description) { -%>
+<%= it.requestBody.description %>
+
+<% } -%>
+<% if (it.requestBody.required) { -%>
+**Required:** Yes
+
+<% } -%>
+**Content Types:** <%= it.requestBody.contentTypes.map(ct => `\`${ct}\``).join(", ") %>
+
+<% if (it.requestBody.schema?.ref) { -%>
+<% const refName = it.requestBody.schema.ref.replace("[]", ""); -%>
+<% const prefix = it.extractSchemaPrefix(refName); -%>
+<% const isArray = it.requestBody.schema.ref.endsWith("[]"); -%>
+**Schema:** <%= isArray ? "Array of " : "" %>[<%= refName %>](../schemas/<%= it.toFileName(prefix) %>/<%= it.toFileName(refName) %>.md)
+
+<% } -%>
+<% } -%>
+<% if (it.responses.length > 0) { -%>
+## Responses
+
+| Status | Description |
+|--------|-------------|
+<% it.responses.forEach(res => { -%>
+| <%= res.status %> | <%= res.description %> |
+<% }) -%>
+
+<% const successResponse = it.responses.find(r => r.status === "200" || r.status === "201"); -%>
+<% if (successResponse?.schema?.ref) { -%>
+<% const refName = successResponse.schema.ref.replace("[]", ""); -%>
+<% const prefix = it.extractSchemaPrefix(refName); -%>
+<% const isArray = successResponse.schema.ref.endsWith("[]"); -%>
+**Success Response Schema:**
+
+<%= isArray ? "Array of " : "" %>[<%= refName %>](../schemas/<%= it.toFileName(prefix) %>/<%= it.toFileName(refName) %>.md)
+
+<% } -%>
+<% } -%>
+<% if (it.security.length > 0) { -%>
+## Security
+
+<% it.security.forEach(sec => { -%>
+- **<%= sec.name %>**<%= sec.scopes.length > 0 ? `: ${sec.scopes.join(", ")}` : "" %>
+<% }) -%>
+<% } -%>

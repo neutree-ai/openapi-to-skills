@@ -1,0 +1,71 @@
+# <%= it.name %>
+
+<% if (it.description) { -%>
+<%= it.description %>
+
+<% } -%>
+**Type:** <%= it.type %>
+
+<% if (it.type === "object" && it.fields) { -%>
+## Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+<% it.fields.forEach(field => { -%>
+<% let type = field.type; -%>
+<% if (field.schema?.ref) { type = `[${field.schema.ref}](${it.toFileName(field.schema.ref)}.md)`; } -%>
+| `<%= field.name %>` | <%= type %> | <%= field.required ? "Yes" : "No" %> | <%= field.description ?? "" %> |
+<% }) -%>
+
+<% const nestedFields = it.fields.filter(f => f.nestedFields); -%>
+<% if (nestedFields.length > 0) { -%>
+## Nested Fields
+
+<% nestedFields.forEach(field => { -%>
+### `<%= field.name %>`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+<% field.nestedFields.forEach(nested => { -%>
+<% let type = nested.type; -%>
+<% if (nested.schema?.ref) { type = `[${nested.schema.ref}](${it.toFileName(nested.schema.ref)}.md)`; } -%>
+| `<%= nested.name %>` | <%= type %> | <%= nested.required ? "Yes" : "No" %> | <%= nested.description ?? "" %> |
+<% }) -%>
+
+<% field.nestedFields.filter(n => n.nestedFields).forEach(nested => { -%>
+#### `<%= field.name %>.<%= nested.name %>`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+<% nested.nestedFields.forEach(deep => { -%>
+<% let type = deep.type; -%>
+<% if (deep.schema?.ref) { type = `[${deep.schema.ref}](${it.toFileName(deep.schema.ref)}.md)`; } -%>
+| `<%= deep.name %>` | <%= type %> | <%= deep.required ? "Yes" : "No" %> | <%= deep.description ?? "" %> |
+<% }) -%>
+
+<% }) -%>
+<% }) -%>
+<% } -%>
+<% } else if (it.type === "enum" && it.enumValues) { -%>
+## Values
+
+<% it.enumValues.forEach(v => { -%>
+- `<%= v %>`
+<% }) -%>
+<% } else if (it.composition) { -%>
+## Composition
+
+<% it.composition.forEach(item => { -%>
+<% if (item.ref) { -%>
+- [<%= item.ref %>](<%= it.toFileName(item.ref) %>.md)
+<% } else { -%>
+- (inline schema)
+<% } -%>
+<% }) -%>
+<% } else if (it.type === "array" && it.items) { -%>
+<% if (it.items.ref) { -%>
+Array of [<%= it.items.ref %>](<%= it.toFileName(it.items.ref) %>.md)
+<% } else { -%>
+Array of object
+<% } -%>
+<% } -%>
