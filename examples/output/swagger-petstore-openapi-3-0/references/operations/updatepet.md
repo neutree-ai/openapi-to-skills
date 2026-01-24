@@ -14,7 +14,7 @@ Update an existent pet in the store
 
 **Content Types:** `application/json`, `application/xml`, `application/x-www-form-urlencoded`
 
-**Schema:** [Pet](../schemas/pet/pet.md)
+**Schema:** [Pet](../schemas/Pet/Pet.md)
 
 ## Responses
 
@@ -28,7 +28,7 @@ Update an existent pet in the store
 
 **Success Response Schema:**
 
-[Pet](../schemas/pet/pet.md)
+[Pet](../schemas/Pet/Pet.md)
 
 ## Security
 

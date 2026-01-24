@@ -4,4 +4,4 @@
 
 | Schema | Type | Description |
 |--------|------|-------------|
-| [Tag](tag.md) | object |  |
+| [Tag](Tag.md) | object |  |

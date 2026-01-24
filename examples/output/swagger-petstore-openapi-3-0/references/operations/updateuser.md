@@ -18,7 +18,7 @@ Update an existent user in the store
 
 **Content Types:** `application/json`, `application/xml`, `application/x-www-form-urlencoded`
 
-**Schema:** [User](../schemas/user/user.md)
+**Schema:** [User](../schemas/User/User.md)
 
 ## Responses
 

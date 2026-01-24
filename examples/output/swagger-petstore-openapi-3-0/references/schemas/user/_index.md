@@ -4,4 +4,4 @@
 
 | Schema | Type | Description |
 |--------|------|-------------|
-| [User](user.md) | object |  |
+| [User](User.md) | object |  |

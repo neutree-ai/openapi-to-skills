@@ -10,7 +10,7 @@ Place a new order in the store.
 
 **Content Types:** `application/json`, `application/xml`, `application/x-www-form-urlencoded`
 
-**Schema:** [Order](../schemas/order/order.md)
+**Schema:** [Order](../schemas/Order/Order.md)
 
 ## Responses
 
@@ -23,5 +23,5 @@ Place a new order in the store.
 
 **Success Response Schema:**
 
-[Order](../schemas/order/order.md)
+[Order](../schemas/Order/Order.md)
 

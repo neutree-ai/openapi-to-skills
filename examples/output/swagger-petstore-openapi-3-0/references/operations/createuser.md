@@ -12,7 +12,7 @@ Created user object
 
 **Content Types:** `application/json`, `application/xml`, `application/x-www-form-urlencoded`
 
-**Schema:** [User](../schemas/user/user.md)
+**Schema:** [User](../schemas/User/User.md)
 
 ## Responses
 
@@ -23,5 +23,5 @@ Created user object
 
 **Success Response Schema:**
 
-[User](../schemas/user/user.md)
+[User](../schemas/User/User.md)
 

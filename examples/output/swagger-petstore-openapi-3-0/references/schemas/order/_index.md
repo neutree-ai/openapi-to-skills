@@ -4,4 +4,4 @@
 
 | Schema | Type | Description |
 |--------|------|-------------|
-| [Order](order.md) | object |  |
+| [Order](Order.md) | object |  |

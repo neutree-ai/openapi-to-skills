@@ -28,7 +28,7 @@ Upload image of the pet.
 
 **Success Response Schema:**
 
-[ApiResponse](../schemas/api/apiresponse.md)
+[ApiResponse](../schemas/Api/ApiResponse.md)
 
 ## Security
 

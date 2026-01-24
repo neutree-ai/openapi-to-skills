@@ -4,4 +4,4 @@
 
 | Schema | Type | Description |
 |--------|------|-------------|
-| [Pet](pet.md) | object |  |
+| [Pet](Pet.md) | object |  |

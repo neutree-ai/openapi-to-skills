@@ -4,4 +4,4 @@
 
 | Schema | Type | Description |
 |--------|------|-------------|
-| [Category](category.md) | object |  |
+| [Category](Category.md) | object |  |

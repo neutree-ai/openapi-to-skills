@@ -4,4 +4,4 @@
 
 | Schema | Type | Description |
 |--------|------|-------------|
-| [ApiResponse](apiresponse.md) | object |  |
+| [ApiResponse](ApiResponse.md) | object |  |
