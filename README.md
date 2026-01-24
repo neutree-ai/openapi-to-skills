@@ -84,12 +84,22 @@ For advanced use cases, individual components (`createParser`, `createRenderer`,
 
 ## Examples
 
-See the [examples](./examples) directory for sample input and output:
+### Petstore (simple)
 
-| Input | Output | Scale |
-|-------|--------|-------|
-| [petstore.yaml](./examples/input/petstore.yaml) | [swagger-petstore-openapi-3-0/](./examples/output/swagger-petstore-openapi-3-0/) | 3 resources, 19 operations |
-| [github.yaml](./examples/input/github.yaml) | [github-v3-rest-api/](./examples/output/github-v3-rest-api/) | 43 resources, 1,078 operations |
+See [examples/](./examples) for a simple demo with the classic Petstore spec (3 resources, 19 operations).
+
+### Stripe API (production-scale)
+
+[stripe-api-skills](https://github.com/Yuyz0112/stripe-api-skills) demonstrates real-world usage with the full Stripe API:
+
+| Metric | Original | Agent Skills |
+|--------|----------|--------------|
+| Source | 1 file (7.2 MB) | 2,135 files |
+| Resources | - | 77 index files |
+| Operations | 588 (all in one) | 588 individual files |
+| Schemas | 1,315 (all in one) | 1,468 individual files |
+
+A 7.2 MB monolithic spec becomes 2,135 focused files that agents can navigate on-demand.
 
 ## Roadmap
 
