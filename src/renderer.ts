@@ -124,10 +124,13 @@ export class TemplateRenderer implements Renderer {
 // =============================================================================
 
 export function toFileName(name: string): string {
-	return name
-		.replace(/[^a-zA-Z0-9]+/g, "-")
+	const sanitized = name
+		.normalize("NFC")
+		.replace(/[^\p{L}\p{N}-]+/gu, "-")
 		.replace(/^-+|-+$/g, "")
 		.replace(/-{2,}/g, "-");
+
+	return sanitized || "unnamed";
 }
 
 export function extractSchemaPrefix(name: string): string {

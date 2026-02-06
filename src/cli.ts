@@ -6,6 +6,7 @@ import { defineCommand, runMain } from "citty";
 import { consola } from "consola";
 import { parse as parseYaml } from "yaml";
 import { convertOpenAPIToSkill } from "./converter.js";
+import { toFileName } from "./renderer.js";
 import type { GroupByStrategy, OpenAPISpec } from "./types.js";
 
 const main = defineCommand({
@@ -107,12 +108,7 @@ const main = defineCommand({
 		}
 
 		// Derive skill name for output path check
-		const skillName =
-			args.name ??
-			spec.info.title
-				.toLowerCase()
-				.replace(/[^a-z0-9]+/g, "-")
-				.replace(/^-+|-+$/g, "");
+		const skillName = args.name ?? toFileName(spec.info.title).toLowerCase();
 		const outputPath = join(args.output, skillName);
 
 		// Check if output exists
