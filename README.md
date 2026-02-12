@@ -88,9 +88,9 @@ For advanced use cases, individual components (`createParser`, `createRenderer`,
 
 See [examples/](./examples) for a simple demo with the classic Petstore spec (3 resources, 19 operations).
 
-### Stripe API (production-scale)
+### Public APIs Collection (production-scale)
 
-[stripe-api-skills](https://github.com/Yuyz0112/stripe-api-skills) demonstrates real-world usage with the full Stripe API:
+[public-api-skills](https://github.com/Yuyz0112/public-api-skills) demonstrates real-world usage across a large collection of public APIs:
 
 | Metric | Original | Agent Skills |
 |--------|----------|--------------|
