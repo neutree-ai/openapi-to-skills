@@ -1,3 +1,4 @@
+import { toFileName } from "./renderer.js";
 import type {
 	AuthSchemeDocument,
 	FieldDocument,
@@ -24,7 +25,6 @@ import type {
 	SkillMeta,
 } from "./types.js";
 import { isReferenceObject } from "./types.js";
-import { toFileName } from "./renderer.js";
 
 const HTTP_METHODS = [
 	"get",

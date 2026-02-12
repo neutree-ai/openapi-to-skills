@@ -58,7 +58,9 @@ async function getExpectedOutputDir(inputFile: string): Promise<string | null> {
 		spec = JSON.parse(content) as OpenAPISpec;
 	}
 
-	const expectedDirName = toFileName(spec.info.title).toLowerCase().substring(0, 64);
+	const expectedDirName = toFileName(spec.info.title)
+		.toLowerCase()
+		.substring(0, 64);
 	const outputs = await readdir(OUTPUT_DIR);
 	const match = outputs.find((dir) => dir === expectedDirName);
 	return match ? join(OUTPUT_DIR, match) : null;
