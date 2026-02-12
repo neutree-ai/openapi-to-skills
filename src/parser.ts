@@ -24,6 +24,7 @@ import type {
 	SkillMeta,
 } from "./types.js";
 import { isReferenceObject } from "./types.js";
+import { toFileName } from "./renderer.js";
 
 const HTTP_METHODS = [
 	"get",
@@ -522,12 +523,7 @@ export class Parser {
 	// ===========================================================================
 
 	private toSkillName(name: string): string {
-		return name
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, "-")
-			.replace(/^-+|-+$/g, "")
-			.replace(/-{2,}/g, "-")
-			.substring(0, 64);
+		return toFileName(name).toLowerCase().substring(0, 64);
 	}
 
 	private getRefName(ref: string): string {

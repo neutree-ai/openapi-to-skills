@@ -1,0 +1,100 @@
+openapi: 3.0.0
+info:
+  title: 日本語テストAPI
+  version: 1.0.0
+  description: Japanese character filename test
+paths:
+  /users:
+    get:
+      operationId: ユーザー一覧取得
+      tags: [ユーザー]
+      summary: ユーザー一覧を取得
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ユーザー"
+    post:
+      operationId: ユーザー作成
+      tags: [ユーザー]
+      summary: 新規ユーザーを作成
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ユーザー入力"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ユーザー"
+  /products:
+    get:
+      operationId: 商品一覧取得
+      tags: [商品]
+      summary: 商品一覧を取得
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/商品"
+components:
+  schemas:
+    ユーザー:
+      type: object
+      required:
+        - id
+        - 名前
+      properties:
+        id:
+          type: integer
+          description: ユーザーID
+        名前:
+          type: string
+          description: ユーザー名
+        メールアドレス:
+          type: string
+          format: email
+          description: メールアドレス
+    ユーザー入力:
+      type: object
+      required:
+        - 名前
+      properties:
+        名前:
+          type: string
+          description: ユーザー名
+        メールアドレス:
+          type: string
+          format: email
+          description: メールアドレス
+    商品:
+      type: object
+      required:
+        - id
+        - 商品名
+        - 価格
+      properties:
+        id:
+          type: integer
+          description: 商品ID
+        商品名:
+          type: string
+          description: 商品名
+        価格:
+          type: number
+          description: 価格（円）
+        説明:
+          type: string
+          description: 商品説明

@@ -37,6 +37,50 @@ describe("toFileName", () => {
 	test("handles mixed special characters", () => {
 		expect(toFileName("My Awesome API!")).toBe("My-Awesome-API");
 	});
+
+	test("preserves Japanese characters", () => {
+		expect(toFileName("ユーザー")).toBe("ユーザー");
+		expect(toFileName("顧客管理")).toBe("顧客管理");
+	});
+
+	test("preserves mixed Japanese and English", () => {
+		expect(toFileName("User-ユーザー")).toBe("User-ユーザー");
+		expect(toFileName("顧客-Management")).toBe("顧客-Management");
+	});
+
+	test("replaces forbidden filesystem characters", () => {
+		expect(toFileName("file:name")).toBe("file-name");
+		expect(toFileName("file<>name")).toBe("file-name");
+		expect(toFileName("file|name")).toBe("file-name");
+		expect(toFileName('file"name')).toBe("file-name");
+		expect(toFileName("file*name")).toBe("file-name");
+		expect(toFileName("file?name")).toBe("file-name");
+		expect(toFileName("file\\name")).toBe("file-name");
+		expect(toFileName("file/name")).toBe("file-name");
+	});
+
+	test("normalizes Unicode to NFC", () => {
+		const nfd = "\u30E6\u30FC\u30B5\u30FC".normalize("NFD");
+		const nfc = "\u30E6\u30FC\u30B5\u30FC".normalize("NFC");
+		expect(toFileName(nfd)).toBe(nfc);
+	});
+
+	test("handles control characters", () => {
+		expect(toFileName("file\x00name")).toBe("file-name");
+		expect(toFileName("file\x1Fname")).toBe("file-name");
+	});
+
+	test("preserves other Unicode scripts", () => {
+		expect(toFileName("Файл")).toBe("Файл");
+		expect(toFileName("文件")).toBe("文件");
+		expect(toFileName("Ñoño")).toBe("Ñoño");
+	});
+
+	test("returns fallback for empty result", () => {
+		expect(toFileName(":*?")).toBe("unnamed");
+		expect(toFileName("///")).toBe("unnamed");
+		expect(toFileName("   ")).toBe("unnamed");
+	});
 });
 
 // =============================================================================

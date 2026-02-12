@@ -1,7 +1,10 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { join } from "node:path";
+import { parse as parseYaml } from "yaml";
+import { toFileName } from "../src/renderer.js";
+import type { OpenAPISpec } from "../src/types.js";
 
 const ROOT = join(import.meta.dir, "..");
 const INPUT_DIR = join(ROOT, "examples/input");
@@ -45,9 +48,19 @@ async function getInputSpecs(): Promise<string[]> {
 }
 
 async function getExpectedOutputDir(inputFile: string): Promise<string | null> {
+	const inputPath = join(INPUT_DIR, inputFile);
+	const content = await readFile(inputPath, "utf-8");
+
+	let spec: OpenAPISpec;
+	if (inputFile.endsWith(".yaml") || inputFile.endsWith(".yml")) {
+		spec = parseYaml(content) as OpenAPISpec;
+	} else {
+		spec = JSON.parse(content) as OpenAPISpec;
+	}
+
+	const expectedDirName = toFileName(spec.info.title).toLowerCase().substring(0, 64);
 	const outputs = await readdir(OUTPUT_DIR);
-	const inputName = basename(inputFile, ".yaml").replace(".json", "");
-	const match = outputs.find((dir) => dir.includes(inputName));
+	const match = outputs.find((dir) => dir === expectedDirName);
 	return match ? join(OUTPUT_DIR, match) : null;
 }
 
