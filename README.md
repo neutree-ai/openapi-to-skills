@@ -1,6 +1,7 @@
 # openapi-to-skills
 
 [![codecov](https://codecov.io/gh/neutree-ai/openapi-to-skills/graph/badge.svg?branch=main)](https://codecov.io/gh/neutree-ai/openapi-to-skills)
+[![npm version](https://img.shields.io/npm/v/openapi-to-skills?logo=npm)](https://www.npmjs.com/package/openapi-to-skills)
 
 Convert OpenAPI specifications into [Agent Skills](https://agentskills.io/) format - structured markdown documentation that minimizes context size for AI agents.
 
