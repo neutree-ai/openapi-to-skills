@@ -1,5 +1,7 @@
 # openapi-to-skills
 
+[![codecov](https://codecov.io/gh/neutree-ai/openapi-to-skills/graph/badge.svg?branch=main)](https://codecov.io/gh/neutree-ai/openapi-to-skills)
+
 Convert OpenAPI specifications into [Agent Skills](https://agentskills.io/) format - structured markdown documentation that minimizes context size for AI agents.
 
 AI agents often need domain-specific knowledge to complete tasks. Rather than writing custom prompts or building MCP tools from scratch, leveraging existing API documentation is a practical approach - and OpenAPI is the de facto standard with battle-tested specifications maintained over years.
