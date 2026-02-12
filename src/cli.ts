@@ -12,7 +12,7 @@ import type { GroupByStrategy, OpenAPISpec } from "./types.js";
 const main = defineCommand({
 	meta: {
 		name: "openapi-to-skills",
-		version: "0.1.0",
+		version: "0.2.1",
 		description: "Convert OpenAPI specifications to Agent Skills format",
 	},
 	args: {

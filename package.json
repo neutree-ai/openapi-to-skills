@@ -1,6 +1,6 @@
 {
 	"name": "openapi-to-skills",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"description": "Convert OpenAPI specifications to Agent Skills format with progressive disclosure",
 	"type": "module",
 	"main": "./dist/index.js",
