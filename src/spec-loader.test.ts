@@ -46,9 +46,7 @@ describe("loadSpecFromInput", () => {
 		}) as typeof fetch;
 
 		try {
-			const spec = await loadSpecFromInput(
-				"https://example.com/spec.yaml",
-			);
+			const spec = await loadSpecFromInput("https://example.com/spec.yaml");
 			expect(spec.info.title).toBe("Remote Test API");
 			expect(spec.openapi).toBe("3.0.0");
 		} finally {
