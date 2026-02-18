@@ -24,6 +24,8 @@ Agent Skills solves this by structuring documentation for on-demand reading. Age
 npx openapi-to-skills ./openapi.yaml -o ./output
 # or
 bunx openapi-to-skills ./openapi.yaml -o ./output
+# or from URL
+npx openapi-to-skills https://example.com/openapi.yaml -o ./output
 ```
 
 ### Options
@@ -107,7 +109,7 @@ A 7.2 MB monolithic spec becomes 2,135 focused files that agents can navigate on
 ## Roadmap
 
 - [ ] Detect unresolved external `$ref` and warn users
-- [ ] Support fetching OpenAPI specs from URL
+- [x] Support fetching OpenAPI specs from URL
 
 ## Contributing
 

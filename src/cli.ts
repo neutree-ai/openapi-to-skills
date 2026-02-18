@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { existsSync } from "node:fs";
-import { readFile, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 import { defineCommand, runMain } from "citty";
 import { consola } from "consola";
-import { parse as parseYaml } from "yaml";
 import { convertOpenAPIToSkill } from "./converter.js";
 import { toFileName } from "./renderer.js";
+import { loadSpecFromInput } from "./spec-loader.js";
 import type { GroupByStrategy, OpenAPISpec } from "./types.js";
 
 const main = defineCommand({
@@ -18,7 +18,7 @@ const main = defineCommand({
 	args: {
 		input: {
 			type: "positional",
-			description: "Path to OpenAPI spec (JSON or YAML)",
+			description: "Path or URL to OpenAPI spec (JSON or YAML)",
 			required: true,
 		},
 		output: {
@@ -84,14 +84,7 @@ const main = defineCommand({
 
 		consola.start(`Reading OpenAPI spec: ${inputFile}`);
 
-		const content = await readFile(inputFile, "utf-8");
-		let spec: OpenAPISpec;
-
-		if (inputFile.endsWith(".yaml") || inputFile.endsWith(".yml")) {
-			spec = parseYaml(content) as OpenAPISpec;
-		} else {
-			spec = JSON.parse(content) as OpenAPISpec;
-		}
+		const spec: OpenAPISpec = await loadSpecFromInput(inputFile);
 
 		// Validate basic structure
 		if (!spec.openapi) {
