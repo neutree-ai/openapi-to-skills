@@ -245,7 +245,13 @@ export class Parser {
 	private parseRequestBody(
 		reqBody: RequestBodyObject | ReferenceObject,
 	): RequestBodyDocument | undefined {
-		if (isReferenceObject(reqBody)) return undefined;
+		if (isReferenceObject(reqBody)) {
+			return {
+				required: false, // Default for ref
+				contentTypes: [],
+				schema: { ref: this.getRefName(reqBody.$ref) },
+			};
+		}
 
 		const contentTypes = Object.keys(reqBody.content);
 		const firstContentType = contentTypes[0];
@@ -270,7 +276,11 @@ export class Parser {
 
 		for (const [status, response] of Object.entries(responses)) {
 			if (isReferenceObject(response)) {
-				result.push({ status, description: "(reference)" });
+				result.push({
+					status,
+					description: "(reference)",
+					schema: { ref: this.getRefName(response.$ref) },
+				});
 				continue;
 			}
 
@@ -278,7 +288,12 @@ export class Parser {
 				description?: string;
 				content?: Record<string, { schema?: unknown }>;
 			};
-			const content = res.content?.["application/json"];
+			const contentTypes = Object.keys(res.content ?? {});
+			// Prefer application/json, fallback to first available
+			const contentType = res.content?.["application/json"]
+				? "application/json"
+				: contentTypes[0];
+			const content = contentType ? res.content?.[contentType] : undefined;
 
 			result.push({
 				status,
@@ -529,7 +544,15 @@ export class Parser {
 
 	private getRefName(ref: string): string {
 		const parts = ref.split("/");
-		return parts[parts.length - 1] ?? ref;
+		const last = parts[parts.length - 1];
+		if (!last) return ref;
+
+		// Handle URI encoded parts if any
+		try {
+			return decodeURIComponent(last);
+		} catch {
+			return last;
+		}
 	}
 
 	private extractSchemaPrefix(name: string): string {
