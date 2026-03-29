@@ -41,6 +41,15 @@
 <% const isArray = it.requestBody.schema.ref.endsWith("[]"); -%>
 **Schema:** <%= isArray ? "Array of " : "" %>[<%= refName %>](../schemas/<%= it.toFileName(prefix) %>/<%= it.toFileName(refName) %>.md)
 
+<% } else if (it.requestBody.schema?.inline?.fields) { -%>
+**Schema:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+<% it.requestBody.schema.inline.fields.forEach(field => { -%>
+| `<%= field.name %>` | <%= field.type %> | <%= field.required ? "Yes" : "No" %> | <%= field.description ?? "" %> |
+<% }) -%>
+
 <% } -%>
 <% } -%>
 <% if (it.responses.length > 0) { -%>
@@ -60,6 +69,15 @@
 **Success Response Schema:**
 
 <%= isArray ? "Array of " : "" %>[<%= refName %>](../schemas/<%= it.toFileName(prefix) %>/<%= it.toFileName(refName) %>.md)
+
+<% } else if (successResponse?.schema?.inline?.fields) { -%>
+**Success Response Schema (inline):**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+<% successResponse.schema.inline.fields.forEach(field => { -%>
+| `<%= field.name %>` | <%= field.type %> | <%= field.required ? "Yes" : "No" %> | <%= field.description ?? "" %> |
+<% }) -%>
 
 <% } -%>
 <% } -%>
