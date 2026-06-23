@@ -1,0 +1,26 @@
+openapi: 3.1.0
+info:
+  title: Assets Overlay API
+  version: 1.0.0
+  description: Minimal spec exercising the --assets static overlay.
+servers:
+  - url: https://assets.example.com
+security:
+  - bearerAuth: []
+tags:
+  - name: things
+    description: Demo resource.
+paths:
+  /things:
+    get:
+      operationId: listThings
+      tags: [things]
+      summary: List things
+      responses:
+        "200":
+          description: A list of things.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

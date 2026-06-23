@@ -33,6 +33,18 @@ export async function convertOpenAPIToSkill(
 
 	// Write output
 	await writeSkillOutput(doc, options.outputDir, renderer, writer);
+
+	// Overlay hand-authored static assets. Applied *after* generation so they
+	// survive `--force` (which wipes the skill dir before this) and override any
+	// generated file of the same relative path.
+	if (options.assetsDir) {
+		if (!writer.copyDir) {
+			throw new Error("Writer does not support copyDir; cannot overlay assets");
+		}
+		const skillDir = join(options.outputDir, doc.meta.name);
+		await writer.copyDir(options.assetsDir, skillDir);
+		consola.success(`Overlaid static assets from ${options.assetsDir}`);
+	}
 }
 
 /**
