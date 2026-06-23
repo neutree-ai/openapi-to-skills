@@ -13,7 +13,7 @@ import { validateArgs } from "./validate.js";
 const main = defineCommand({
 	meta: {
 		name: "openapi-to-skills",
-		version: "0.3.1",
+		version: "0.3.2",
 		description: "Convert OpenAPI specifications to Agent Skills format",
 	},
 	args: {
