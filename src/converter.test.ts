@@ -346,3 +346,81 @@ describe("convertOpenAPIToSkill - authentication", () => {
 		expect(authFile).toBeUndefined();
 	});
 });
+
+// =============================================================================
+// Static Asset Overlay (--assets)
+// =============================================================================
+
+function createOrderTrackingWriter() {
+	const order: string[] = [];
+	const copyDirCalls: Array<{ src: string; dest: string }> = [];
+
+	const writer: Writer = {
+		mkdir: mock(() => Promise.resolve()),
+		writeFile: mock((path: string) => {
+			order.push(`write:${path}`);
+			return Promise.resolve();
+		}),
+		copyDir: mock((src: string, dest: string) => {
+			order.push(`copyDir:${src}->${dest}`);
+			copyDirCalls.push({ src, dest });
+			return Promise.resolve();
+		}),
+	};
+
+	return { writer, order, copyDirCalls };
+}
+
+describe("convertOpenAPIToSkill - asset overlay", () => {
+	test("overlays assetsDir onto the skill dir after generation", async () => {
+		const spec = createMinimalSpec();
+		const { writer, order, copyDirCalls } = createOrderTrackingWriter();
+
+		await convertOpenAPIToSkill(spec, {
+			outputDir: "/out",
+			assetsDir: "/assets/test",
+			renderer: createMockRenderer(),
+			writer,
+		});
+
+		// Copied exactly once, into the skill dir, with the source assets dir.
+		expect(copyDirCalls).toEqual([
+			{ src: "/assets/test", dest: "/out/test-api" },
+		]);
+
+		// Applied AFTER generation so assets override generated files.
+		const lastWriteIdx = order.findLastIndex((e) => e.startsWith("write:"));
+		const copyIdx = order.findIndex((e) => e.startsWith("copyDir:"));
+		expect(copyIdx).toBeGreaterThan(lastWriteIdx);
+	});
+
+	test("does not copy when assetsDir is absent", async () => {
+		const spec = createMinimalSpec();
+		const { writer, copyDirCalls } = createOrderTrackingWriter();
+
+		await convertOpenAPIToSkill(spec, {
+			outputDir: "/out",
+			renderer: createMockRenderer(),
+			writer,
+		});
+
+		expect(copyDirCalls).toEqual([]);
+	});
+
+	test("throws when assetsDir is set but the writer lacks copyDir", async () => {
+		const spec = createMinimalSpec();
+		const writer: Writer = {
+			mkdir: mock(() => Promise.resolve()),
+			writeFile: mock(() => Promise.resolve()),
+		};
+
+		await expect(
+			convertOpenAPIToSkill(spec, {
+				outputDir: "/out",
+				assetsDir: "/assets/test",
+				renderer: createMockRenderer(),
+				writer,
+			}),
+		).rejects.toThrow(/copyDir/);
+	});
+});

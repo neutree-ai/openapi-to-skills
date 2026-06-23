@@ -41,6 +41,7 @@ npx openapi-to-skills https://example.com/openapi.yaml -o ./output
 | `--group-by` | `-g` | How to group operations: `tags`, `path`, or `auto` (default: `auto`) |
 | `--case-strategy` | | Strategy for case-insensitive filesystem safety: `lowercase` |
 | `--templates` | `-t` | Custom templates directory |
+| `--assets` | `-a` | Static assets directory overlaid onto the skill after generation |
 | `--force` | `-f` | Overwrite existing output directory |
 | `--quiet` | `-q` | Suppress output except errors |
 
@@ -56,7 +57,21 @@ npx openapi-to-skills ./openapi.yaml -o ./output --case-strategy lowercase
 
 This lowercases all schema output paths and disambiguates collisions with numeric suffixes (e.g., `alert.md` and `alert-2.md`). Without this option, the original casing is preserved (default behavior, no breaking change).
 
-### Output Structure
+### Static Assets (`--assets`)
+
+Generation is destructive: with `--force` the whole skill directory is wiped and rebuilt from the spec, so any hand-authored file dropped inside it is lost on the next run. Use `--assets` to keep hand-authored content (helper scripts, extra reference docs) alongside a generated skill:
+
+```bash
+npx openapi-to-skills ./openapi.yaml -o ./output --assets ./assets/my-api --force
+```
+
+The assets directory is overlaid onto the skill directory **after** generation, preserving relative paths and file modes (e.g. the executable bit on scripts):
+
+```
+assets/my-api/scripts/handoff.sh   →   output/my-api/scripts/handoff.sh
+```
+
+Because the overlay is re-applied from this external source on every run, the files survive `--force`. Applying after generation also means an asset **overrides** a generated file at the same relative path — an escape hatch for hand-editing a generated file. The assets directory must live outside the output directory.
 
 ```
 {skill-name}/

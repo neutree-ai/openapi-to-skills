@@ -188,6 +188,16 @@ export interface Renderer {
 export interface Writer {
 	writeFile(path: string, content: string): Promise<void>;
 	mkdir(path: string): Promise<void>;
+	/**
+	 * Recursively copy a source directory's contents into a destination
+	 * directory, overwriting on collision and preserving file modes (e.g. the
+	 * executable bit on scripts). Used to overlay hand-authored static assets
+	 * onto a freshly generated skill.
+	 *
+	 * Optional: only invoked when `assetsDir` is set. A custom Writer that omits
+	 * it simply can't be used with `--assets`.
+	 */
+	copyDir?(srcDir: string, destDir: string): Promise<void>;
 }
 
 // =============================================================================
@@ -211,6 +221,14 @@ export interface ConvertOptions {
 	 * - undefined: No transformation (default, preserves original casing)
 	 */
 	caseStrategy?: CaseStrategy;
+	/**
+	 * Directory of hand-authored static assets (scripts, extra references)
+	 * overlaid onto the generated skill *after* generation. Files land at the
+	 * same relative path inside the skill dir and override generated files of
+	 * the same name. Survives `--force` regeneration because it is re-applied
+	 * each run from this external source dir.
+	 */
+	assetsDir?: string;
 }
 
 // =============================================================================

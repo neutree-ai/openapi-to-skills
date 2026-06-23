@@ -1,4 +1,8 @@
-import { mkdir as fsMkdir, writeFile as fsWriteFile } from "node:fs/promises";
+import {
+	cp as fsCp,
+	mkdir as fsMkdir,
+	writeFile as fsWriteFile,
+} from "node:fs/promises";
 import type { Writer } from "./types.js";
 
 /**
@@ -11,6 +15,12 @@ export class FileSystemWriter implements Writer {
 
 	async mkdir(path: string): Promise<void> {
 		await fsMkdir(path, { recursive: true });
+	}
+
+	async copyDir(srcDir: string, destDir: string): Promise<void> {
+		// `recursive` walks the tree; `force` overwrites collisions so assets win
+		// over generated files. fs.cp preserves source file modes.
+		await fsCp(srcDir, destDir, { recursive: true, force: true });
 	}
 }
 

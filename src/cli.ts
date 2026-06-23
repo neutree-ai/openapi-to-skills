@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { defineCommand, runMain } from "citty";
 import { consola } from "consola";
 import { convertOpenAPIToSkill } from "./converter.js";
@@ -13,7 +13,7 @@ import { validateArgs } from "./validate.js";
 const main = defineCommand({
 	meta: {
 		name: "openapi-to-skills",
-		version: "0.3.0",
+		version: "0.3.1",
 		description: "Convert OpenAPI specifications to Agent Skills format",
 	},
 	args: {
@@ -50,6 +50,12 @@ const main = defineCommand({
 			type: "string",
 			alias: "t",
 			description: "Custom templates directory",
+		},
+		assets: {
+			type: "string",
+			alias: "a",
+			description:
+				"Static assets directory overlaid onto the skill after generation (survives --force; overrides generated files of the same path)",
 		},
 		excludePaths: {
 			type: "string",
@@ -117,6 +123,26 @@ const main = defineCommand({
 			await rm(outputPath, { recursive: true });
 		}
 
+		// Validate the assets dir up front: it must exist and live outside the
+		// output dir (anything inside outputPath was just wiped by --force).
+		if (args.assets) {
+			if (!existsSync(args.assets)) {
+				consola.error(`Assets directory not found: ${args.assets}`);
+				process.exit(1);
+			}
+			const assetsAbs = resolve(args.assets);
+			const outputAbs = resolve(outputPath);
+			if (
+				assetsAbs === outputAbs ||
+				assetsAbs.startsWith(`${outputAbs}${sep}`)
+			) {
+				consola.error(
+					`Assets directory must be outside the output directory: ${args.assets}`,
+				);
+				process.exit(1);
+			}
+		}
+
 		consola.info(`API: ${spec.info.title} (v${spec.info.version})`);
 		consola.info(`OpenAPI version: ${spec.openapi}`);
 		consola.info(`Paths: ${Object.keys(spec.paths).length}`);
@@ -131,6 +157,7 @@ const main = defineCommand({
 		await convertOpenAPIToSkill(spec, {
 			outputDir: args.output,
 			templateDir: args.templates,
+			assetsDir: args.assets,
 			caseStrategy,
 			parser: {
 				skillName: args.name,
