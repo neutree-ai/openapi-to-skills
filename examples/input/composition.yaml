@@ -1,0 +1,119 @@
+openapi: 3.0.3
+info:
+  title: Composition API
+  version: 1.0.0
+  description: Exercises allOf/oneOf/anyOf composition schemas in request/response bodies.
+paths:
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List orders with pagination
+      responses:
+        "200":
+          description: Paginated order list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create an order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/SingleOrderRequest'
+                - $ref: '#/components/schemas/BatchOrderRequest'
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get order by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Order'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/OrderItem'
+                      totalAmount:
+                        type: number
+                        description: Total order amount
+components:
+  schemas:
+    PageMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [pending, processing, shipped]
+        createdAt:
+          type: string
+          format: date-time
+    OrderItem:
+      type: object
+      properties:
+        productId:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+    SingleOrderRequest:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: string
+        quantity:
+          type: integer
+    BatchOrderRequest:
+      type: object
+      required: [orders]
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/SingleOrderRequest'
