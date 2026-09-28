@@ -28,6 +28,8 @@ bunx openapi-to-skills ./openapi.yaml -o ./output
 npx openapi-to-skills https://example.com/openapi.yaml -o ./output
 ```
 
+You can also use the [openapi-to-skills agent skill](./skills/openapi-to-skills/SKILL.md) if you want your agent to generate a skill from your OpenAPI spec.
+
 ### Options
 
 | Option | Alias | Description |
