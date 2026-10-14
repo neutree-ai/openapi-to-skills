@@ -18,6 +18,26 @@ function _fieldRows(fields) {
 }
 function renderInlineSchema(s) {
 	if (!s) return "";
+	if (s.composition) {
+		let out = "";
+		for (const comp of s.composition) {
+			if (comp.ref) {
+				const rn = comp.ref.replace("[]", "");
+				const prefix = it.extractSchemaPrefix(rn);
+				const arr = comp.ref.endsWith("[]");
+				out += `- ${arr ? "Array of " : ""}[${rn}](../schemas/${it.toFileName(prefix)}/${it.toFileName(rn)}.md)\n`;
+			}
+			if (comp.inline?.fields) {
+				out += "| Field | Type | Required | Description |\n|-------|------|----------|-------------|\n";
+				out += _fieldRows(comp.inline.fields) + "\n";
+				for (const f of comp.inline.fields.filter((f) => f.nestedFields && f.nestedFields.length)) {
+					out += `\n**\`${f.name}\` fields:**\n\n| Field | Type | Required | Description |\n|-------|------|----------|-------------|\n`;
+					out += _fieldRows(f.nestedFields) + "\n";
+				}
+			}
+		}
+		return out;
+	}
 	if (s.type === "object" && s.fields && s.fields.length) {
 		let out =
 			"| Field | Type | Required | Description |\n|-------|------|----------|-------------|\n" +

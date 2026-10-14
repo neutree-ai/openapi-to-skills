@@ -302,3 +302,226 @@ describe("TemplateRenderer - operation inline schemas", () => {
 		expect(result).toContain("[UserRef](../schemas/User/UserRef.md)");
 	});
 });
+
+// =============================================================================
+// TemplateRenderer - operation composition schemas (allOf/oneOf/anyOf)
+// =============================================================================
+
+describe("TemplateRenderer - operation composition schemas", () => {
+	const baseOp = {
+		operationId: "listOrders",
+		path: "/api/orders",
+		method: "GET",
+		tag: "orders",
+		deprecated: false,
+		parameters: [],
+		security: [],
+	};
+
+	test("renders allOf response with ref + inline fields", () => {
+		const renderer = createRenderer();
+		const result = renderer.renderOperation({
+			...baseOp,
+			responses: [
+				{
+					status: "200",
+					description: "OK",
+					schema: {
+						inline: {
+							name: "(inline)",
+							type: "allOf",
+							composition: [
+								{ ref: "BaseResponse" },
+								{
+									inline: {
+										name: "(inline)",
+										type: "object",
+										fields: [
+											{
+												name: "data",
+												type: "object",
+												required: true,
+												schema: { ref: "OrderList" },
+											},
+											{
+												name: "total",
+												type: "integer",
+												required: true,
+												description: "Total count",
+											},
+										],
+									},
+								},
+							],
+						},
+					},
+				},
+			],
+		});
+
+		expect(result).toContain("[BaseResponse](../schemas/Base/BaseResponse.md)");
+		expect(result).toContain("| `data` | [OrderList](../schemas/Order/OrderList.md) | Yes |  |");
+		expect(result).toContain("| `total` | integer | Yes | Total count |");
+	});
+
+	test("renders oneOf request body with multiple refs", () => {
+		const renderer = createRenderer();
+		const result = renderer.renderOperation({
+			...baseOp,
+			requestBody: {
+				required: true,
+				contentTypes: ["application/json"],
+				schema: {
+					inline: {
+						name: "(inline)",
+						type: "oneOf",
+						composition: [
+							{ ref: "CreateOrderRequest" },
+							{ ref: "BatchOrderRequest" },
+						],
+					},
+				},
+			},
+			responses: [],
+		});
+
+		expect(result).toContain("[CreateOrderRequest](../schemas/Create/CreateOrderRequest.md)");
+		expect(result).toContain("[BatchOrderRequest](../schemas/Batch/BatchOrderRequest.md)");
+	});
+
+	test("renders composition inline fields with nestedFields", () => {
+		const renderer = createRenderer();
+		const result = renderer.renderOperation({
+			...baseOp,
+			responses: [
+				{
+					status: "200",
+					description: "OK",
+					schema: {
+						inline: {
+							name: "(inline)",
+							type: "allOf",
+							composition: [
+								{
+									inline: {
+										name: "(inline)",
+										type: "object",
+										fields: [
+											{
+												name: "metadata",
+												type: "object",
+												required: false,
+												description: "Extra info",
+												nestedFields: [
+													{
+														name: "createdAt",
+														type: "string",
+														required: true,
+														description: "Creation timestamp",
+													},
+												],
+											},
+										],
+									},
+								},
+							],
+						},
+					},
+				},
+			],
+		});
+
+		expect(result).toContain("| `metadata` | object | No | Extra info |");
+		expect(result).toContain("**`metadata` fields:**");
+		expect(result).toContain("| `createdAt` | string | Yes | Creation timestamp |");
+	});
+
+	test("renders composition request body with contentTypes", () => {
+		const renderer = createRenderer();
+		const result = renderer.renderOperation({
+			...baseOp,
+			requestBody: {
+				required: true,
+				contentTypes: ["application/json", "application/xml"],
+				schema: {
+					inline: {
+						name: "(inline)",
+						type: "allOf",
+						composition: [
+							{ ref: "BaseRequest" },
+							{
+								inline: {
+									name: "(inline)",
+									type: "object",
+									fields: [
+										{
+											name: "action",
+											type: "string",
+											required: true,
+											description: "Action to perform",
+										},
+									],
+								},
+							},
+						],
+					},
+				},
+			},
+			responses: [],
+		});
+
+		expect(result).toContain("**Content Types:** `application/json`, `application/xml`");
+		expect(result).toContain("[BaseRequest](../schemas/Base/BaseRequest.md)");
+		expect(result).toContain("| `action` | string | Yes | Action to perform |");
+	});
+
+	test("renders composition with array ref (e.g. OrderItem[])", () => {
+		const renderer = createRenderer();
+		const result = renderer.renderOperation({
+			...baseOp,
+			responses: [
+				{
+					status: "200",
+					description: "OK",
+					schema: {
+						inline: {
+							name: "(inline)",
+							type: "allOf",
+							composition: [
+								{ ref: "OrderItem[]" },
+							],
+						},
+					},
+				},
+			],
+		});
+
+		expect(result).toContain("Array of [OrderItem](../schemas/Order/OrderItem.md)");
+	});
+
+	test("renders composition ref with multi-segment name (e.g. GetUsersResponse)", () => {
+		const renderer = createRenderer();
+		const result = renderer.renderOperation({
+			...baseOp,
+			responses: [
+				{
+					status: "200",
+					description: "OK",
+					schema: {
+						inline: {
+							name: "(inline)",
+							type: "oneOf",
+							composition: [
+								{ ref: "GetUsersResponse" },
+								{ ref: "GetAdminsResponse" },
+							],
+						},
+					},
+				},
+			],
+		});
+
+		expect(result).toContain("[GetUsersResponse](../schemas/Get/GetUsersResponse.md)");
+		expect(result).toContain("[GetAdminsResponse](../schemas/Get/GetAdminsResponse.md)");
+	});
+});
