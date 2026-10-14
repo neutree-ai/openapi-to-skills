@@ -35,59 +35,64 @@ async function generate(
 	return files;
 }
 
+function schema(spec: OpenAPISpec, name: string): SchemaObject {
+	const found = spec.components?.schemas?.[name];
+	if (!found) throw new Error(`Missing fixture schema ${name}`);
+	return found as SchemaObject;
+}
+
+/** The line describing one field of the resource's main entity. */
+function fieldLine(
+	page: string | undefined,
+	field: string,
+): string | undefined {
+	return page?.split("\n").find((line) => line.startsWith(`- \`${field}\``));
+}
+
 describe("compact layout", () => {
-	test("keeps list calls and schemas on one resource page and writes only unattached schemas", async () => {
+	test("keeps list calls and their fields on the resource page, and leaves out unused schemas", async () => {
 		const files = await generate(await fixture());
 		expect([...files.keys()].sort()).toEqual([
 			"SKILL.md",
 			"references/operations/createOrder.md",
 			"references/resources/Order.md",
 			"references/resources/User.md",
-			"references/schemas/Unused.md",
 		]);
+		for (const content of files.values())
+			expect(content).not.toContain("Unused");
 		const order = files.get("references/resources/Order.md");
-		expect(order).toContain("/orders/list");
-		expect(order).toContain("application/json");
-		expect(order).toContain("Request body (required)");
-		expect(order).toContain("listOrders");
-		expect(order).toContain("createOrder");
-		expect(order).toContain("../operations/createOrder.md");
-		expect(order).not.toContain("**ID:** `createOrder`");
+		expect(order).toContain("`listOrders` POST `/orders/list` → Order[]");
+		expect(order).toContain("- `total`: number");
+		expect(order).toContain("- `id`*: string");
+		expect(order).toContain("- `customer`: User {id, name, state}");
+		// A non-list operation is listed, its details are on its own page.
+		expect(order).toContain("- `createOrder` POST `/orders`");
+		expect(order).not.toContain("## Input");
 		const create = files.get("references/operations/createOrder.md");
-		expect(create).toContain("**ID:** `createOrder`");
-		expect(create).toContain("../resources/Order.md");
+		expect(create).toContain("POST `/orders` · Order (../resources/Order.md)");
+		expect(create).toContain("## Input (application/json)");
+		expect(create).toContain("## Returns 201 (application/json)");
 		expect(create).toContain("Created");
-		expect(order).toContain("Matching orders");
-		expect(order).toContain("`total`");
-		expect(order).toContain("`id`");
-		expect(order).toContain("`customer`");
 		expect(order).not.toContain("../schemas/");
 	});
 
-	test("defines filter rules and shared list shapes once without inventing operators", async () => {
+	test("states the list query and filter rules once, in SKILL.md", async () => {
 		const files = await generate(await fixture());
 		const skill = files.get("SKILL.md");
-		const order = files.get("references/resources/Order.md");
-		const user = files.get("references/resources/User.md");
-		expect(skill?.match(/## Filter suffix rules/g)).toHaveLength(1);
-		expect(skill?.match(/## List query /g)).toHaveLength(1);
-		expect(skill).toContain("_in");
-		expect(skill).toContain("_contains");
-		expect(skill).not.toContain("_gte");
-		expect(skill).toContain("minimum: 1");
-		expect(skill).toContain("default: 20");
-		for (const page of [order, user]) {
-			expect(page).toContain("Shared request shape");
-			expect(page).toContain("Filterable fields");
-			expect(page).toContain("Supported suffixes");
-			expect(page).toContain("Combinators");
+		expect(skill?.match(/## Filters/g)).toHaveLength(1);
+		expect(skill?.match(/## List query/g)).toHaveLength(1);
+		expect(skill).toContain("- `first`: int — default: 20; minimum: 1");
+		for (const name of ["Order", "User"]) {
+			const page = files.get(`references/resources/${name}.md`);
+			expect(page).toContain("Input: List query (SKILL.md)");
+			expect(page).toContain("`where`: filter on the tagged fields below");
+			expect(page).not.toContain("ListInput");
+			expect(page).not.toContain("WhereInput");
 		}
-		expect(order).not.toContain("`id_in`");
-		expect(user).not.toContain("`name_contains`");
-		expect(order).not.toContain("OrderListInput");
+		expect(files.get("references/resources/Order.md")).not.toContain("`id_in`");
 	});
 
-	test("shows exact suffixes on the page without spec-order-dependent class names", async () => {
+	test("tags each field with its exact suffixes, independent of spec order", async () => {
 		const spec = await fixture();
 		const before = await generate(spec);
 		const schemas = spec.components?.schemas;
@@ -97,33 +102,69 @@ describe("compact layout", () => {
 			schemas: Object.fromEntries(Object.entries(schemas).reverse()),
 		};
 		for (const name of ["OrderWhereInput", "UserWhereInput"]) {
-			const filter = schemas[name] as SchemaObject;
+			const filter = schema(spec, name);
 			filter.properties = Object.fromEntries(
 				Object.entries(filter.properties ?? {}).reverse(),
 			);
 		}
 		const after = await generate(spec);
-		const suffixRow = (page: string | undefined, field: string) =>
-			page
-				?.split("\n")
-				.find(
-					(line) =>
-						line.startsWith(`|\`${field}\``) && line.includes("equality"),
-				);
 		for (const files of [before, after]) {
 			const order = files.get("references/resources/Order.md");
-			expect(suffixRow(order, "id")).toContain("`_in`");
-			expect(suffixRow(order, "id")).not.toContain("`_gt`");
-			expect(suffixRow(order, "total")).toContain("`_gt`");
-			expect(suffixRow(order, "total")).not.toContain("`_in`");
-			expect(
-				suffixRow(files.get("references/resources/User.md"), "name"),
-			).toContain("`_contains`");
+			expect(fieldLine(order, "id")).toContain("[= _in]");
+			expect(fieldLine(order, "total")).toContain("[= _gt]");
+			expect(fieldLine(order, "previousState")).not.toContain("[");
+			const user = files.get("references/resources/User.md");
+			expect(fieldLine(user, "name")).toContain("[= _contains]");
 			for (const content of files.values())
 				expect(content).not.toMatch(/\b(?:string|number|enum|relation)-\d+\b/);
 		}
-		expect(suffixRow(after.get("references/resources/Order.md"), "id")).toBe(
-			suffixRow(before.get("references/resources/Order.md"), "id"),
+		expect(fieldLine(after.get("references/resources/Order.md"), "id")).toBe(
+			fieldLine(before.get("references/resources/Order.md"), "id"),
+		);
+	});
+
+	test("names a well-known suffix set and explains only the classes in use", async () => {
+		const spec = await fixture();
+		const filter = schema(spec, "OrderWhereInput");
+		filter.properties = {
+			...filter.properties,
+			id_not: { type: "string" },
+			id_not_in: { type: "array", items: { type: "string" } },
+		};
+		const files = await generate(spec);
+		expect(
+			fieldLine(files.get("references/resources/Order.md"), "id"),
+		).toContain("[eq]");
+		const skill = files.get("SKILL.md");
+		expect(skill).toContain("- `eq`:");
+		expect(skill).not.toContain("- `str`:");
+		expect(skill).not.toContain("- `rels`:");
+	});
+
+	test("tags relations and says how to sort relative to the fields", async () => {
+		const spec = await fixture();
+		const filter = schema(spec, "OrderWhereInput");
+		filter.properties = {
+			...filter.properties,
+			customer: { $ref: "#/components/schemas/UserWhereInput" },
+		};
+		const order = schema(spec, "OrderOrderByInput");
+		order.enum = [
+			"id_ASC",
+			"id_DESC",
+			"total_ASC",
+			"total_DESC",
+			"state_ASC",
+			"state_DESC",
+			"previousState_ASC",
+			"previousState_DESC",
+			"parent_ASC",
+			"parent_DESC",
+		];
+		const page = (await generate(spec)).get("references/resources/Order.md");
+		expect(fieldLine(page, "customer")).toContain("[rel]");
+		expect(page).toContain(
+			"`orderBy`: `<field>_ASC` or `<field>_DESC`, for any field below except [rel] and [rels] fields",
 		);
 	});
 
@@ -163,31 +204,47 @@ describe("compact layout", () => {
 			},
 		};
 		const files = await generate(spec);
-		expect(files.get("references/resources/Order.md")).not.toContain(
-			"**ID:** `createOrder`",
+		expect(files.get("references/resources/Order.md")).toContain(
+			"- `createOrder` POST `/orders`",
 		);
 		expect(files.get("references/operations/createOrder.md")).toContain(
 			"Changed orders",
 		);
 	});
 
-	test("groups only fields with matching types and suffix sets", async () => {
+	test("keeps a count call taking the list query on the resource page", async () => {
 		const spec = await fixture();
-		const user = spec.components?.schemas?.User as SchemaObject;
-		user.properties = { ...user.properties, externalId: { type: "string" } };
-		const filter = spec.components?.schemas?.UserWhereInput as SchemaObject;
-		filter.properties = {
-			...filter.properties,
-			externalId: { type: "string" },
-			externalId_in: { type: "array", items: { type: "string" } },
+		spec.paths["/orders/count"] = {
+			post: {
+				tags: ["Order"],
+				operationId: "countOrders",
+				requestBody: {
+					content: {
+						"application/json": {
+							schema: { $ref: "#/components/schemas/OrderListInput" },
+						},
+					},
+				},
+				responses: {
+					"200": {
+						description: "How many",
+						content: {
+							"application/json": {
+								schema: {
+									type: "object",
+									required: ["count"],
+									properties: { count: { type: "integer" } },
+								},
+							},
+						},
+					},
+				},
+			},
 		};
-		const page = (await generate(spec)).get("references/resources/User.md");
-		const group = page
-			?.split("\n")
-			.find((line) => line.startsWith("|`externalId`, `id`|"));
-		expect(group).toContain("equality, `_in`");
-		expect(group).not.toContain("`name`");
-		expect(group).not.toContain("_contains");
+		const files = await generate(spec);
+		const order = files.get("references/resources/Order.md");
+		expect(order).toContain("`countOrders` POST `/orders/count` → object");
+		expect(files.has("references/operations/countOrders.md")).toBe(false);
 	});
 
 	test("keeps a GET collection on its resource page without a request body", async () => {
@@ -198,7 +255,7 @@ describe("compact layout", () => {
 		delete item.post;
 		const files = await generate(spec);
 		expect(files.get("references/resources/Order.md")).toContain(
-			"**ID:** `listOrders`",
+			"`listOrders` GET `/orders/list`",
 		);
 		expect(files.has("references/operations/listOrders.md")).toBe(false);
 	});
@@ -222,78 +279,96 @@ describe("compact layout", () => {
 		expect(create).toContain("../resources/order.md");
 		expect(create).toContain("../resources/user.md");
 		for (const resource of ["order", "user"]) {
-			expect(files.get(`references/resources/${resource}.md`)).toContain(
-				"../operations/createorder.md",
-			);
-			expect(files.get(`references/resources/${resource}.md`)).toContain(
-				"../operations/createorder-2.md",
-			);
+			const page = files.get(`references/resources/${resource}.md`);
+			expect(page).toContain("../operations/createorder.md");
+			expect(page).toContain("../operations/createorder-2.md");
 		}
 	});
 
-	test("deduplicates schema definitions, recursive references, and enum values per page", async () => {
-		const files = await generate(await fixture());
-		const page = files.get("references/resources/Order.md");
-		expect(page?.match(/### `Order` \(closed\)\n/g)).toHaveLength(1);
-		expect(page?.match(/### `User`\n/g)).toHaveLength(1);
-		expect(page?.match(/"archived"/g)).toHaveLength(1);
-		expect(page?.match(/"deleted"/g)).toHaveLength(1);
-		for (const content of files.values()) {
-			const anchors = new Set(
-				[...content.matchAll(/<a id="([^"]+)"/g)].map((m) => m[1]),
-			);
-			for (const match of content.matchAll(/\]\(#([^)]+)\)/g))
-				expect(anchors.has(match[1])).toBe(true);
+	test("describes a named object once per page, and refers to it by name after", async () => {
+		const spec = await fixture();
+		const user = schema(spec, "User");
+		user.properties = {
+			...user.properties,
+			address: { $ref: "#/components/schemas/Address" },
+			previous: {
+				type: "array",
+				items: { $ref: "#/components/schemas/Address" },
+			},
+		};
+		const schemas = spec.components?.schemas;
+		if (!schemas) throw new Error("Missing fixture schemas");
+		schemas.Address = {
+			type: "object",
+			properties: {
+				lines: { type: "array", items: { type: "string" } },
+				city: { type: "string" },
+			},
+		};
+		const page = (await generate(spec)).get("references/resources/Order.md");
+		expect(page?.match(/^### User$/gm)).toHaveLength(1);
+		expect(page?.match(/^### Address$/gm)).toHaveLength(1);
+		expect(page).toContain("- `previous`: Address[]");
+		// The page's own entity, referred to from itself.
+		expect(page).toContain("- `parent`: Order");
+		for (const content of (await generate(spec)).values()) {
+			const headings = content.match(/^#+ .+$/gm) ?? [];
+			expect(new Set(headings).size).toBe(headings.length);
 		}
+	});
+
+	test("lists long enums once per page and short ones inline", async () => {
+		const spec = await fixture();
+		const state = schema(spec, "State");
+		state.enum = Array.from({ length: 12 }, (_, i) => `state_${i}`);
+		const page = (await generate(spec)).get("references/resources/Order.md");
+		expect(fieldLine(page, "state")).toContain(": State");
+		expect(page?.match(/state_11/g)).toHaveLength(1);
+		expect(page).toContain("## Enums\n- State: state_0 | state_1");
 	});
 
 	test("preserves unknown filter dialects as full schemas", async () => {
 		const spec = await fixture();
-		const filter = spec.components?.schemas?.OrderWhereInput as SchemaObject;
+		const filter = schema(spec, "OrderWhereInput");
 		filter.properties = {
 			...filter.properties,
 			total_custom_operator: { type: "number" },
 		};
-		const files = await generate(spec);
-		expect(files.get("references/resources/Order.md")).toContain(
-			"`total_custom_operator`",
-		);
-		expect(files.get("references/resources/Order.md")).toContain("`id_in`");
+		const page = (await generate(spec)).get("references/resources/Order.md");
+		expect(page).toContain("### OrderWhereInput");
+		expect(page).toContain("- `total_custom_operator`: number");
+		expect(page).toContain("- `id_in`: string[]");
 	});
 
 	test("does not merge list shapes with different pagination constraints", async () => {
 		const spec = await fixture();
-		const input = spec.components?.schemas?.UserListInput as SchemaObject;
-		input.required = ["first"];
+		schema(spec, "UserListInput").required = ["first"];
 		const files = await generate(spec);
 		expect(files.get("SKILL.md")).not.toContain("## List query");
-		expect(files.get("references/resources/Order.md")).toContain(
-			"OrderListInput",
-		);
+		const user = files.get("references/resources/User.md");
+		expect(user).toContain("- `first`*: int — default: 20; minimum: 1");
 	});
 
 	test("preserves operator-specific constraints rather than compressing them", async () => {
 		const spec = await fixture();
-		const filter = spec.components?.schemas?.OrderWhereInput as SchemaObject;
+		const filter = schema(spec, "OrderWhereInput");
 		filter.properties = {
 			...filter.properties,
 			total_gt: { type: "number", minimum: 0 },
 		};
 		const page = (await generate(spec)).get("references/resources/Order.md");
-		expect(page).toContain("`total_gt`");
-		expect(page).toContain("minimum: 0");
+		expect(page).toContain("- `total_gt`: number — minimum: 0");
 	});
 
 	test("preserves mismatched filter operand types instead of inventing a class", async () => {
 		const spec = await fixture();
-		const filter = spec.components?.schemas?.OrderWhereInput as SchemaObject;
+		const filter = schema(spec, "OrderWhereInput");
 		filter.properties = {
 			...filter.properties,
 			total_in: { type: "array", items: { type: "string" } },
 		};
 		const page = (await generate(spec)).get("references/resources/Order.md");
-		expect(page).toContain("`total_in`");
-		expect(page).toContain("string[]");
+		expect(page).toContain("- `total_in`: string[]");
 	});
 
 	test("keeps allOf wrappers with extra required fields distinct from their base schema", async () => {
@@ -313,12 +388,13 @@ describe("compact layout", () => {
 		const page = (await generate(spec)).get(
 			"references/operations/createOrder.md",
 		);
-		expect(page).toContain("`total`*");
-		expect(page).toContain("`id`*");
-		expect(page).toContain("`state`*");
+		const input = page?.split("## Returns")[0];
+		expect(input).toContain("- `total`*: number");
+		expect(input).toContain("- `id`*: string");
+		expect(input).toContain("- `state`*:");
 	});
 
-	test("tracks alias references and escaped schema names when removing reachable pages", async () => {
+	test("follows alias references and escaped schema names", async () => {
 		const spec = await fixture();
 		const schemas = spec.components?.schemas;
 		if (!schemas) throw new Error("Missing fixture schemas");
@@ -327,18 +403,15 @@ describe("compact layout", () => {
 			type: "object",
 			properties: { aliasField: { type: "string" } },
 		};
-		const order = schemas.Order as SchemaObject;
+		const order = schema(spec, "Order");
 		order.properties = {
 			...order.properties,
 			alias: { $ref: "#/components/schemas/Alias" },
 		};
 		const files = await generate(spec);
 		expect(files.get("references/resources/Order.md")).toContain(
-			"`aliasField`",
+			"- `alias`: Alias {aliasField}",
 		);
-		expect([...files.keys()].filter((p) => p.includes("/schemas/"))).toEqual([
-			"references/schemas/Unused.md",
-		]);
 	});
 
 	test("renders referenced request bodies and response components for every media type", async () => {
@@ -379,12 +452,13 @@ describe("compact layout", () => {
 		const page = (await generate(spec)).get(
 			"references/operations/createOrder.md",
 		);
-		expect(page).toContain("multipart/form-data");
-		expect(page).toContain("string (binary)");
-		expect(page).toContain("`file`*");
-		expect(page).toContain("`message`");
-		expect(page).toContain("text/plain");
-		expect(page).toContain("Plain response");
+		expect(page).toContain("## Input (multipart/form-data, required)");
+		expect(page).toContain("- `file`*: string(binary)");
+		expect(page).toContain("## Input (application/json, required)");
+		expect(page).toContain("- `message`: string");
+		expect(page).toContain(
+			"## Returns 200 (text/plain)\nPlain response\nstring",
+		);
 	});
 
 	test("handles recursive array and allOf schemas without looping", async () => {
@@ -398,13 +472,61 @@ describe("compact layout", () => {
 		schemas.RecursiveAllOf = {
 			allOf: [{ $ref: "#/components/schemas/RecursiveAllOf" }],
 		};
+		const order = schema(spec, "Order");
+		order.properties = {
+			...order.properties,
+			nested: { $ref: "#/components/schemas/RecursiveArray" },
+			looped: { $ref: "#/components/schemas/RecursiveAllOf" },
+		};
+		const page = (await generate(spec)).get("references/resources/Order.md");
+		expect(page).toContain("- `nested`: RecursiveArray[]");
+		expect(page).toContain("- `looped`: any");
+	});
+
+	test("states parameters, security and errors most operations share once", async () => {
+		const spec = await fixture();
+		const header = {
+			name: "x-tenant",
+			in: "header" as const,
+			schema: { type: "string" as const },
+		};
+		const error = {
+			description: "Bad request",
+			content: {
+				"application/json": {
+					schema: {
+						type: "object" as const,
+						properties: { message: { type: "string" as const } },
+					},
+				},
+			},
+		};
+		spec.security = [{ token: [] }];
+		for (const item of Object.values(spec.paths))
+			for (const op of [item?.post, item?.get])
+				if (op) {
+					op.parameters = [header];
+					op.responses = { ...op.responses, "400": error };
+				}
+		// One operation differs.
+		const create = spec.paths["/orders"]?.post;
+		if (!create) throw new Error("Missing fixture operation");
+		create.parameters = [
+			header,
+			{ name: "dry", in: "query", schema: { type: "boolean" } },
+		];
 		const files = await generate(spec);
-		expect(files.get("references/schemas/RecursiveArray.md")).toContain(
-			"RecursiveArray",
+		const skill = files.get("SKILL.md");
+		expect(skill).toContain("## Every operation");
+		expect(skill).toContain("- `x-tenant` (header): string");
+		expect(skill).toContain("Security: token");
+		expect(skill).toContain("- 400 Bad request: object");
+		expect(files.get("references/resources/Order.md")).not.toContain(
+			"x-tenant",
 		);
-		expect(files.get("references/schemas/RecursiveAllOf.md")).toContain(
-			"allOf",
-		);
+		const page = files.get("references/operations/createOrder.md");
+		expect(page).toContain("- `dry` (query): boolean");
+		expect(page).not.toContain("Errors:");
 	});
 
 	test("disambiguates resource names on case-insensitive filesystems", async () => {

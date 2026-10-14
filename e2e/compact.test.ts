@@ -43,7 +43,7 @@ describe("compact CLI", () => {
 		expect(result.exitCode).toBe(0);
 		const root = join(output, "compact-test-api");
 		expect(await readFile(join(root, "SKILL.md"), "utf8")).toContain(
-			"Filter suffix rules",
+			"## Filters",
 		);
 		expect(
 			await readFile(join(root, "references/resources/Order.md"), "utf8"),
@@ -53,7 +53,7 @@ describe("compact CLI", () => {
 		);
 		expect(
 			await readFile(join(root, "references/resources/Order.md"), "utf8"),
-		).toContain("../operations/createOrder.md");
+		).toContain("- `createOrder` POST `/orders`");
 	});
 
 	test("rejects an invalid layout before --force removes existing output", async () => {
@@ -124,6 +124,6 @@ describe("compact CLI", () => {
 		).toContain("# Custom operation createOrder");
 		expect(
 			await readFile(join(output, "compact-test-api/SKILL.md"), "utf8"),
-		).toContain("Filter suffix rules");
+		).toContain("## Filters");
 	});
 });

@@ -6,7 +6,7 @@ import { defineCommand, runMain } from "citty";
 import { consola } from "consola";
 import { convertOpenAPIToSkill } from "./converter.js";
 import { toFileName } from "./renderer.js";
-import { loadSpecFromInput } from "./spec-loader.js";
+import { loadOverlay, loadSpecFromInput } from "./spec-loader.js";
 import type { OpenAPISpec } from "./types.js";
 import { validateArgs } from "./validate.js";
 
@@ -63,6 +63,17 @@ const main = defineCommand({
 			description:
 				"Static assets directory overlaid onto the skill after generation (survives --force; overrides generated files of the same path)",
 		},
+		overlay: {
+			type: "string",
+			description:
+				"OpenAPI Overlay files applied to the spec before conversion (comma-separated, applied in order)",
+		},
+		validator: {
+			type: "boolean",
+			description:
+				"Also write tools/validate.mjs, an offline check of an operation's input against the spec",
+			default: false,
+		},
 		excludePaths: {
 			type: "string",
 			description: "Exclude paths matching these prefixes (comma-separated)",
@@ -103,6 +114,12 @@ const main = defineCommand({
 		consola.start(`Reading OpenAPI spec: ${inputFile}`);
 
 		const spec: OpenAPISpec = await loadSpecFromInput(inputFile);
+		const overlays = await Promise.all(
+			(args.overlay?.split(",") ?? [])
+				.map((file) => file.trim())
+				.filter(Boolean)
+				.map((file) => loadOverlay(file)),
+		);
 
 		// Validate spec and options
 		let validated: ReturnType<typeof validateArgs>;
@@ -165,6 +182,8 @@ const main = defineCommand({
 			layout,
 			templateDir: args.templates,
 			assetsDir: args.assets,
+			overlays,
+			validator: args.validator,
 			caseStrategy,
 			parser: {
 				skillName: args.name,

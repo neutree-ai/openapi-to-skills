@@ -1,5 +1,6 @@
 // Re-export OpenAPI types from openapi-types
 import type { OpenAPIV3 } from "openapi-types";
+import type { OverlayDocument } from "./overlay.js";
 
 // OpenAPI 3.0 types
 export type OpenAPISpec = OpenAPIV3.Document;
@@ -145,7 +146,7 @@ export type CaseStrategy = "lowercase";
 export type Layout = "default" | "compact";
 
 export interface CompactPageDocument {
-	kind: "skill" | "resource" | "operation" | "schema";
+	kind: "skill" | "resource" | "operation";
 	title: string;
 	body: string;
 	meta?: SkillMeta;
@@ -241,6 +242,16 @@ export interface ConvertOptions {
 	 * each run from this external source dir.
 	 */
 	assetsDir?: string;
+	/**
+	 * OpenAPI Overlay 1.0 documents applied to the spec, in order, before
+	 * anything is generated: descriptions the spec lacks, paths to leave out.
+	 */
+	overlays?: OverlayDocument[];
+	/**
+	 * Also write `tools/validate.mjs`: an offline check of an operation's
+	 * input against the spec (operation name, keys, types, enum values).
+	 */
+	validator?: boolean;
 }
 
 // =============================================================================
