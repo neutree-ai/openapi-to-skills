@@ -145,7 +145,7 @@ export type CaseStrategy = "lowercase";
 export type Layout = "default" | "compact";
 
 export interface CompactPageDocument {
-	kind: "skill" | "resource" | "schema";
+	kind: "skill" | "resource" | "operation" | "schema";
 	title: string;
 	body: string;
 	meta?: SkillMeta;

@@ -40,6 +40,7 @@ describe("compact layout", () => {
 		const files = await generate(await fixture());
 		expect([...files.keys()].sort()).toEqual([
 			"SKILL.md",
+			"references/operations/createOrder.md",
 			"references/resources/Order.md",
 			"references/resources/User.md",
 			"references/schemas/Unused.md",
@@ -50,6 +51,12 @@ describe("compact layout", () => {
 		expect(order).toContain("Request body (required)");
 		expect(order).toContain("listOrders");
 		expect(order).toContain("createOrder");
+		expect(order).toContain("../operations/createOrder.md");
+		expect(order).not.toContain("**ID:** `createOrder`");
+		const create = files.get("references/operations/createOrder.md");
+		expect(create).toContain("**ID:** `createOrder`");
+		expect(create).toContain("../resources/Order.md");
+		expect(create).toContain("Created");
 		expect(order).toContain("Matching orders");
 		expect(order).toContain("`total`");
 		expect(order).toContain("`id`");
@@ -72,12 +79,156 @@ describe("compact layout", () => {
 		for (const page of [order, user]) {
 			expect(page).toContain("Shared request shape");
 			expect(page).toContain("Filterable fields");
-			expect(page).toContain("Filter class");
+			expect(page).toContain("Supported suffixes");
 			expect(page).toContain("Combinators");
 		}
 		expect(order).not.toContain("`id_in`");
 		expect(user).not.toContain("`name_contains`");
 		expect(order).not.toContain("OrderListInput");
+	});
+
+	test("shows exact suffixes on the page without spec-order-dependent class names", async () => {
+		const spec = await fixture();
+		const before = await generate(spec);
+		const schemas = spec.components?.schemas;
+		if (!schemas) throw new Error("Missing fixture schemas");
+		spec.components = {
+			...spec.components,
+			schemas: Object.fromEntries(Object.entries(schemas).reverse()),
+		};
+		for (const name of ["OrderWhereInput", "UserWhereInput"]) {
+			const filter = schemas[name] as SchemaObject;
+			filter.properties = Object.fromEntries(
+				Object.entries(filter.properties ?? {}).reverse(),
+			);
+		}
+		const after = await generate(spec);
+		const suffixRow = (page: string | undefined, field: string) =>
+			page
+				?.split("\n")
+				.find(
+					(line) =>
+						line.startsWith(`|\`${field}\``) && line.includes("equality"),
+				);
+		for (const files of [before, after]) {
+			const order = files.get("references/resources/Order.md");
+			expect(suffixRow(order, "id")).toContain("`_in`");
+			expect(suffixRow(order, "id")).not.toContain("`_gt`");
+			expect(suffixRow(order, "total")).toContain("`_gt`");
+			expect(suffixRow(order, "total")).not.toContain("`_in`");
+			expect(
+				suffixRow(files.get("references/resources/User.md"), "name"),
+			).toContain("`_contains`");
+			for (const content of files.values())
+				expect(content).not.toMatch(/\b(?:string|number|enum|relation)-\d+\b/);
+		}
+		expect(suffixRow(after.get("references/resources/Order.md"), "id")).toBe(
+			suffixRow(before.get("references/resources/Order.md"), "id"),
+		);
+	});
+
+	test.each([
+		false,
+		true,
+	])("keeps array-returning mutations on their own pages (data field: %s)", async (hasData) => {
+		const spec = await fixture();
+		const op = spec.paths["/orders"]?.post;
+		if (!op) throw new Error("Missing fixture operation");
+		op.requestBody = {
+			content: {
+				"application/json": {
+					schema: {
+						type: "object",
+						properties: {
+							where: { $ref: "#/components/schemas/OrderWhereInput" },
+							...(hasData
+								? { data: { $ref: "#/components/schemas/Order" } }
+								: {}),
+						},
+					},
+				},
+			},
+		};
+		op.responses = {
+			"200": {
+				description: "Changed orders",
+				content: {
+					"application/json": {
+						schema: {
+							type: "array",
+							items: { $ref: "#/components/schemas/Order" },
+						},
+					},
+				},
+			},
+		};
+		const files = await generate(spec);
+		expect(files.get("references/resources/Order.md")).not.toContain(
+			"**ID:** `createOrder`",
+		);
+		expect(files.get("references/operations/createOrder.md")).toContain(
+			"Changed orders",
+		);
+	});
+
+	test("groups only fields with matching types and suffix sets", async () => {
+		const spec = await fixture();
+		const user = spec.components?.schemas?.User as SchemaObject;
+		user.properties = { ...user.properties, externalId: { type: "string" } };
+		const filter = spec.components?.schemas?.UserWhereInput as SchemaObject;
+		filter.properties = {
+			...filter.properties,
+			externalId: { type: "string" },
+			externalId_in: { type: "array", items: { type: "string" } },
+		};
+		const page = (await generate(spec)).get("references/resources/User.md");
+		const group = page
+			?.split("\n")
+			.find((line) => line.startsWith("|`externalId`, `id`|"));
+		expect(group).toContain("equality, `_in`");
+		expect(group).not.toContain("`name`");
+		expect(group).not.toContain("_contains");
+	});
+
+	test("keeps a GET collection on its resource page without a request body", async () => {
+		const spec = await fixture();
+		const item = spec.paths["/orders/list"];
+		if (!item?.post) throw new Error("Missing fixture operation");
+		item.get = { ...item.post, requestBody: undefined };
+		delete item.post;
+		const files = await generate(spec);
+		expect(files.get("references/resources/Order.md")).toContain(
+			"**ID:** `listOrders`",
+		);
+		expect(files.has("references/operations/listOrders.md")).toBe(false);
+	});
+
+	test("shares one non-list operation page across tags and preserves filename disambiguation", async () => {
+		const spec = await fixture();
+		const op = spec.paths["/orders"]?.post;
+		if (!op) throw new Error("Missing fixture operation");
+		op.tags = ["Order", "User"];
+		spec.paths["/other-orders"] = {
+			post: { ...op, operationId: "createorder" },
+		};
+		const files = await generate(spec, { caseStrategy: "lowercase" });
+		expect(
+			[...files.keys()].filter((path) => path.includes("/operations/")).sort(),
+		).toEqual([
+			"references/operations/createorder-2.md",
+			"references/operations/createorder.md",
+		]);
+		const create = files.get("references/operations/createorder.md");
+		expect(create).toContain("../resources/order.md");
+		expect(create).toContain("../resources/user.md");
+		for (const resource of ["order", "user"]) {
+			expect(files.get(`references/resources/${resource}.md`)).toContain(
+				"../operations/createorder.md",
+			);
+			expect(files.get(`references/resources/${resource}.md`)).toContain(
+				"../operations/createorder-2.md",
+			);
+		}
 	});
 
 	test("deduplicates schema definitions, recursive references, and enum values per page", async () => {
@@ -159,7 +310,9 @@ describe("compact layout", () => {
 				},
 			},
 		};
-		const page = (await generate(spec)).get("references/resources/Order.md");
+		const page = (await generate(spec)).get(
+			"references/operations/createOrder.md",
+		);
 		expect(page).toContain("`total`*");
 		expect(page).toContain("`id`*");
 		expect(page).toContain("`state`*");
@@ -223,7 +376,9 @@ describe("compact layout", () => {
 		};
 		op.requestBody = { $ref: "#/components/requestBodies/Upload" };
 		op.responses = { "200": { $ref: "#/components/responses/Text" } };
-		const page = (await generate(spec)).get("references/resources/Order.md");
+		const page = (await generate(spec)).get(
+			"references/operations/createOrder.md",
+		);
 		expect(page).toContain("multipart/form-data");
 		expect(page).toContain("string (binary)");
 		expect(page).toContain("`file`*");

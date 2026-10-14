@@ -74,15 +74,11 @@ function table(headers: string[], rows: unknown[][]): string {
 interface FilterField {
 	name: string;
 	schema: Schema;
-	className: string;
+	operators: string[];
 }
 interface FilterFamily {
 	fields: FilterField[];
 	combinators: string[];
-}
-interface FilterClass {
-	name: string;
-	operators: string[];
 }
 interface ListShape {
 	name: string;
@@ -92,7 +88,7 @@ interface ListShape {
 /** Analyze raw schemas without changing the default parser's IR or output. */
 class CompactContext {
 	readonly filters = new Map<string, FilterFamily>();
-	readonly classes = new Map<string, FilterClass>();
+	readonly listOperations = new Set<OperationDocument>();
 	readonly lists = new Map<OperationDocument, ListShape>();
 	readonly reachable = new Set<string>();
 	readonly schemas: Record<string, Schema>;
@@ -116,8 +112,30 @@ class CompactContext {
 				this.visit(raw);
 				this.visit(spec.paths[op.path]?.parameters);
 				const body = this.resolve(raw.requestBody);
+				const returnsArray = Object.entries(raw.responses).some(
+					([status, response]) => {
+						if (!/^2\d\d$/.test(status)) return false;
+						return Object.values(
+							this.resolve<ResponseObject>(response)?.content ?? {},
+						).some((media) => this.unwrap(media.schema)?.type === "array");
+					},
+				);
+				if (op.method === "GET" && returnsArray) this.listOperations.add(op);
 				if (!body || !("content" in body)) continue;
 				const media = Object.values(body.content);
+				if (
+					returnsArray &&
+					media.some((m) => {
+						const props = this.unwrap(m.schema)?.properties;
+						return (
+							props?.where &&
+							Object.keys(props).every((key) => LIST_FIELDS.has(key)) &&
+							Object.keys(props).some((key) => key !== "where")
+						);
+					})
+				)
+					this.listOperations.add(op);
+				if (!this.listOperations.has(op)) continue;
 				if (media.length !== 1) continue;
 				const schema = this.unwrap(media[0]?.schema);
 				const props = schema?.properties;
@@ -352,22 +370,13 @@ class CompactContext {
 				if (signature(actual) !== expected) return undefined;
 			}
 		}
-		const fields = [...groups].map(([field, group]) => {
-			const s = this.unwrap(group.schema);
-			const type = this.refName(group.schema)?.endsWith("WhereInput")
-				? "relation"
-				: s?.enum
-					? "enum"
-					: (s?.type ?? "object");
-			const operators = group.operators.sort();
-			const key = JSON.stringify([type, operators]);
-			let filterClass = this.classes.get(key);
-			if (!filterClass) {
-				filterClass = { name: `${type}-${this.classes.size + 1}`, operators };
-				this.classes.set(key, filterClass);
-			}
-			return { name: field, schema: group.schema, className: filterClass.name };
-		});
+		const fields = [...groups]
+			.sort(([a], [b]) => a.localeCompare(b))
+			.map(([field, group]) => ({
+				name: field,
+				schema: group.schema,
+				operators: group.operators.sort(),
+			}));
 		return { fields, combinators };
 	}
 }
@@ -564,15 +573,32 @@ class CompactPage {
 			const family = this.context.filterFor(task.schema);
 			if (family) {
 				parts.push(
-					"Filterable fields (supported suffixes by class in SKILL.md).",
+					"Filterable fields. Each row lists fields with the same value type and supported suffixes; suffix meanings are defined in SKILL.md.",
 				);
+				const groups = new Map<
+					string,
+					{ fields: string[]; type: string; operators: string[] }
+				>();
+				for (const field of family.fields) {
+					const type = this.type(field.schema, MAX_DEPTH, field.name);
+					const key = JSON.stringify([type, field.operators]);
+					const group = groups.get(key) ?? {
+						fields: [],
+						type,
+						operators: field.operators,
+					};
+					group.fields.push(field.name);
+					groups.set(key, group);
+				}
 				parts.push(
 					table(
-						["Field", "Value type", "Filter class"],
-						family.fields.map((field) => [
-							code(field.name),
-							this.type(field.schema, MAX_DEPTH, field.name),
-							code(field.className),
+						["Fields", "Value type", "Supported suffixes"],
+						[...groups.values()].map((group) => [
+							group.fields.map(code).join(", "),
+							group.type,
+							group.operators
+								.map((suffix) => (suffix ? code(suffix) : "equality"))
+								.join(", "),
 						]),
 					),
 				);
@@ -681,10 +707,47 @@ export async function writeCompactOutput(
 		files.set(path, renderer.renderCompactPage?.(page) ?? "");
 	}
 	const resources: string[] = [];
+	const operationPages = new Map<
+		string,
+		{
+			path: string;
+			op: OperationDocument;
+			resources: { tag: string; path: string }[];
+		}
+	>();
 	for (const resource of doc.resources) {
 		const page = new CompactPage(context);
 		const path = allocate("references/resources", resource.tag);
-		const operations = resource.operations.map((op) => page.operation(op));
+		const operations: string[] = [];
+		const otherOperations: unknown[][] = [];
+		for (const op of resource.operations) {
+			if (context.listOperations.has(op)) {
+				operations.push(page.operation(op));
+				continue;
+			}
+			const key = `${op.method} ${op.path}`;
+			let entry = operationPages.get(key);
+			if (!entry) {
+				entry = {
+					path: allocate("references/operations", op.operationId),
+					op,
+					resources: [],
+				};
+				operationPages.set(key, entry);
+			}
+			entry.resources.push({ tag: resource.tag, path });
+			otherOperations.push([
+				op.method,
+				code(op.path),
+				op.summary ?? "",
+				`[${code(op.operationId)}](../operations/${entry.path.split("/").pop()})${op.deprecated ? " (deprecated)" : ""}`,
+			]);
+		}
+		if (otherOperations.length)
+			operations.push(
+				"## Other operations",
+				table(["Method", "Path", "Summary", "Details"], otherOperations),
+			);
 		render(path, {
 			kind: "resource",
 			title: resource.tag,
@@ -695,6 +758,19 @@ export async function writeCompactOutput(
 		resources.push(
 			`- [${cell(resource.tag)}](${path}) (${resource.operations.length} ops)`,
 		);
+	}
+	for (const entry of operationPages.values()) {
+		const page = new CompactPage(context);
+		const operation = page.operation(entry.op);
+		render(entry.path, {
+			kind: "operation",
+			title: entry.op.operationId,
+			body: [
+				`**Resources:** ${entry.resources.map((resource) => `[${cell(resource.tag)}](../resources/${resource.path.split("/").pop()})`).join(", ")}`,
+				operation,
+				page.definitions(),
+			].join("\n\n"),
+		});
 	}
 	const unattached: string[] = [];
 	for (const [name, schema] of Object.entries(context.schemas)) {
@@ -713,7 +789,7 @@ export async function writeCompactOutput(
 	const skill = [
 		doc.meta.description,
 		"## How to use this skill",
-		"Read one resource page for its operations, request bodies, filters, and response fields. Named schemas and enums are expanded once per page. Nested objects expand two levels; deeper object types are named without further expansion. A field marked * is required; other fields are optional. A type followed by ? accepts null. A closed object accepts no additional properties.",
+		"Read one resource page for its list operations, request bodies, filters, and response fields. Other operations have separate pages linked from the resource. Named schemas and enums are expanded once per page. Nested objects expand two levels; deeper object types are named without further expansion. A field marked * is required; other fields are optional. A type followed by ? accepts null. A closed object accepts no additional properties.",
 	];
 	if (doc.meta.servers.length)
 		skill.push(
@@ -732,13 +808,15 @@ export async function writeCompactOutput(
 			renderer.renderAuthentication(doc.authSchemes),
 		);
 	}
-	if (context.classes.size) {
+	if (context.filters.size) {
 		skill.push(
 			"## Filter suffix rules",
 			"Use the field name for equality, or append a supported suffix. Pass arrays to `_in` and `_not_in`; pass scalar values to scalar comparisons and nested filters to relation operators. AND requires all filters, OR requires any filter, and NOT negates filters; each resource states the accepted combinator value types.",
 		);
 		const usedOperators = new Set(
-			[...context.classes.values()].flatMap((c) => c.operators),
+			[...context.filters.values()].flatMap((family) =>
+				family.fields.flatMap((field) => field.operators),
+			),
 		);
 		skill.push(
 			table(
@@ -746,16 +824,6 @@ export async function writeCompactOutput(
 				Object.entries(FILTER_RULES)
 					.filter(([suffix]) => usedOperators.has(suffix))
 					.map(([suffix, meaning]) => [code(suffix || "(none)"), meaning]),
-			),
-		);
-		skill.push(
-			"### Filter classes",
-			table(
-				["Class", "Supported suffixes"],
-				[...context.classes.values()].map((c) => [
-					code(c.name),
-					c.operators.map((s) => code(s || "(none)")).join(", "),
-				]),
 			),
 		);
 	}

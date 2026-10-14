@@ -48,7 +48,12 @@ describe("compact CLI", () => {
 		expect(
 			await readFile(join(root, "references/resources/Order.md"), "utf8"),
 		).toContain("listOrders");
-		expect(existsSync(join(root, "references/operations"))).toBe(false);
+		expect(existsSync(join(root, "references/operations/createOrder.md"))).toBe(
+			true,
+		);
+		expect(
+			await readFile(join(root, "references/resources/Order.md"), "utf8"),
+		).toContain("../operations/createOrder.md");
 	});
 
 	test("rejects an invalid layout before --force removes existing output", async () => {
@@ -92,6 +97,10 @@ describe("compact CLI", () => {
 			join(templates, "compact-resource.md.eta"),
 			"# Custom <%= it.title %>\n\n<%~ it.body %>\n",
 		);
+		await writeFile(
+			join(templates, "compact-operation.md.eta"),
+			"# Custom operation <%= it.title %>\n\n<%~ it.body %>\n",
+		);
 		const result = await cli(
 			"--layout",
 			"compact",
@@ -107,6 +116,12 @@ describe("compact CLI", () => {
 				"utf8",
 			),
 		).toContain("# Custom Order");
+		expect(
+			await readFile(
+				join(output, "compact-test-api/references/operations/createOrder.md"),
+				"utf8",
+			),
+		).toContain("# Custom operation createOrder");
 		expect(
 			await readFile(join(output, "compact-test-api/SKILL.md"), "utf8"),
 		).toContain("Filter suffix rules");
