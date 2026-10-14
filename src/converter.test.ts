@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 import { convertOpenAPIToSkill } from "./converter.js";
-import type { OpenAPISpec, Renderer, Writer } from "./types.js";
+import type { OpenAPISpec, Renderer, SchemaObject, Writer } from "./types.js";
 
 // =============================================================================
 // Test Fixtures
@@ -166,6 +166,72 @@ describe("convertOpenAPIToSkill - file writing", () => {
 		expect(indexFile).toBeDefined();
 		expect(schemaFile1).toBeDefined();
 		expect(schemaFile2).toBeDefined();
+	});
+});
+
+// =============================================================================
+// Complete Enums
+// =============================================================================
+
+describe("convertOpenAPIToSkill - complete enums", () => {
+	test.each([
+		{
+			type: "string" as const,
+			values: ["active", "inactive", "pending", "archived", "deleted"],
+		},
+		{ type: "integer" as const, values: [0, 1, 2, 3, 4] },
+	])("preserves all $type enum values in markdown tables", async ({
+		type,
+		values,
+	}) => {
+		const enumSchema: SchemaObject = { type, enum: values };
+		const objectSchema: SchemaObject = {
+			type: "object",
+			properties: {
+				state: enumSchema,
+				details: { type: "object", properties: { state: enumSchema } },
+			},
+		};
+		const spec: OpenAPISpec = {
+			...createMinimalSpec(),
+			paths: {
+				"/items": {
+					post: {
+						operationId: "createItem",
+						parameters: [{ name: "state", in: "query", schema: enumSchema }],
+						requestBody: {
+							content: { "application/json": { schema: objectSchema } },
+						},
+						responses: {
+							"200": {
+								description: "OK",
+								content: { "application/json": { schema: objectSchema } },
+							},
+						},
+					},
+				},
+			},
+			components: { schemas: { Item: objectSchema } },
+		};
+		const { writer, writeFileCalls } = createMockWriter();
+
+		await convertOpenAPIToSkill(spec, { outputDir: "/out", writer });
+
+		const operation = writeFileCalls.find((c) =>
+			c.path.endsWith("/operations/createItem.md"),
+		)?.content;
+		const schema = writeFileCalls.find((c) =>
+			c.path.endsWith("/schemas/Item/Item.md"),
+		)?.content;
+		const enumType = `enum: ${values.join(", ")}`;
+		expect(operation).toBeDefined();
+		expect(schema).toBeDefined();
+		// Query parameter, request fields, and response fields (including nested fields).
+		expect(operation?.split(enumType)).toHaveLength(6);
+		// Named schema fields, including nested fields.
+		expect(schema?.split(enumType)).toHaveLength(3);
+		expect(operation).not.toContain("...");
+		expect(schema).not.toContain("...");
 	});
 });
 
