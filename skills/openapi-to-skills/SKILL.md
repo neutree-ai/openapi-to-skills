@@ -1,63 +1,31 @@
 ---
 name: openapi-to-skills
-description: 'Generate an AI Agent Skill from an OpenAPI/Swagger spec using the openapi-to-skills CLI. Use when asked to convert an OpenAPI/Swagger document into a skill, create reference docs for an API, or make an API "AI-friendly" for on-demand loading.'
+description: Generate an Agent Skill from an OpenAPI 3.x file or URL using the openapi-to-skills CLI. Use when asked to convert an API specification into a skill or create API reference docs for on-demand loading.
 ---
 
 # openapi-to-skills
 
-Converts an OpenAPI spec into an [Agent Skills](https://agentskills.io/) folder (`SKILL.md` + `references/`), so agents can load API docs on-demand instead of the whole spec.
+Convert an OpenAPI specification into a skill folder with `SKILL.md` and API references.
 
-## When to Use
+## Workflow
 
-- User gives an OpenAPI/Swagger URL or file and wants it turned into a skill.
-- User wants context-efficient, per-operation/per-schema API reference docs instead of one giant spec file.
-
-## Procedure
-
-1. Confirm the spec source (local file path or URL) and desired output directory.
-2. Run the CLI via `npx` (no install needed):
+1. Determine the spec source and output directory from the request. Input must be OpenAPI 3.x in JSON or YAML; convert Swagger 2.0 first.
+2. Read the relevant sections of [references/cli.md](references/cli.md) to choose options:
+   - [Options](references/cli.md#options) for naming, grouping, and filtering.
+   - [Compact Layout](references/cli.md#compact-layout) for resource pages that consolidate list-call details.
+   - [Overlays](references/cli.md#overlays) to modify the spec before generation.
+   - [Validator](references/cli.md#validator) to include an offline input checker.
+   - [Case-Insensitive Filesystem Safety](references/cli.md#case-insensitive-filesystem-safety) for schemas whose names differ only in case.
+   - [Static Assets](references/cli.md#static-assets---assets) and [External References](references/cli.md#external-references) when preserving hand-authored files or bundling external `$ref`s.
+3. Run the CLI with the selected options:
 
    ```bash
    npx openapi-to-skills <spec-path-or-url> -o <output-dir>
    ```
 
-3. If the generated skill directory already exists, add `--force` to overwrite it (destructive: the generated skill directory is removed and recreated; overlaid `--assets` files are reapplied).
-4. If the spec has external `$ref`s (e.g. `./common.yaml#/...`), bundle first:
+   Use `--force` when replacing existing generated output is intended: it deletes and recreates the skill directory. Keep hand-authored content in an external `--assets` directory so it can be reapplied.
+4. Inspect `<output-dir>/<skill-name>/SKILL.md` and its linked references. Check that the intended operations are present and filters took effect; the file layout depends on the selected layout.
 
-   ```bash
-   npx swagger-cli bundle ./api.yaml -o ./bundled.yaml
-   npx openapi-to-skills ./bundled.yaml -o ./output
-   ```
-5. Verify output structure: `<output>/<skill-name>/SKILL.md`, `references/resources/`, `references/operations/`, `references/schemas/`, and `references/authentication.md` (if auth is defined).
+## Maintenance
 
-## Options
-
-| Option | Alias | Description |
-|--------|-------|-------------|
-| `--output` | `-o` | Output directory (default: `./output`) |
-| `--name` | `-n` | Skill name (default: derived from API title) |
-| `--include-tags` | | Only include specified tags (comma-separated) |
-| `--exclude-tags` | | Exclude specified tags (comma-separated) |
-| `--exclude-paths` | | Exclude paths matching prefixes (comma-separated) |
-| `--exclude-deprecated` | | Exclude deprecated operations |
-| `--group-by` | `-g` | Group operations by: `tags`, `path`, or `auto` (default: `auto`) |
-| `--case-strategy` | | `lowercase` to avoid case-collision issues on case-insensitive filesystems (macOS/Windows) |
-| `--templates` | `-t` | Custom templates directory (Eta templates) to override default output format |
-| `--assets` | `-a` | Directory of hand-authored files overlaid onto the generated skill after each run (survives `--force`) |
-| `--force` | `-f` | Overwrite the generated skill directory |
-| `--quiet` | `-q` | Suppress output except errors |
-
-## Notes
-
-- Multiple specs for the same API (e.g. v1/v2) → run the CLI once per spec into separate output subfolders.
-- Use `--assets` for anything hand-written that must survive regeneration (scripts, extra notes) instead of editing generated files directly. The assets directory must be outside the generated skill directory.
-- Prefer `npx openapi-to-skills@latest` if the cached npx version seems stale.
-
-## Maintaining This Skill
-
-The CLI's flags may change over time. When re-verifying:
-
-1. Fetch the current README: `https://raw.githubusercontent.com/neutree-ai/openapi-to-skills/main/README.md`.
-2. Diff the `### Options` table against the one above; update rows that changed, and add/remove flags as needed.
-3. Re-check the "Case-Insensitive Filesystem Safety", "Static Assets", and "External References" sections in the README for behavior changes and update the Procedure/Notes accordingly.
-4. Bump nothing manually — this file has no version field; just keep the Options table in sync.
+Keep CLI options and behavior documented in `references/cli.md`. README links to this skill and reference rather than maintaining another options table.
