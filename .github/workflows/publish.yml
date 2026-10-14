@@ -23,8 +23,9 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      # Trusted publishing (OIDC, no token) needs npm 11.5.1 or later.
-      - run: npm install -g npm@latest
+      # Trusted publishing (OIDC, no token) needs npm 11.5.1 or later. Pinned
+      # to a major so a new npm cannot change how the package is published.
+      - run: npm install -g npm@11
 
       - run: bun install
 

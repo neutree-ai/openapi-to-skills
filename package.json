@@ -6,7 +6,7 @@
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"bin": {
-		"openapi-to-skills": "./dist/src/cli.js"
+		"openapi-to-skills": "dist/src/cli.js"
 	},
 	"exports": {
 		".": {
