@@ -551,7 +551,7 @@ export class Parser {
 		const s = schema as SchemaObject;
 
 		if (s.enum) {
-			return `enum: ${s.enum.slice(0, 3).join(", ")}${s.enum.length > 3 ? "..." : ""}`;
+			return `enum: ${s.enum.join(", ")}`;
 		}
 
 		if (s.type === "array" && s.items) {

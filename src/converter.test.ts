@@ -1,6 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 import { convertOpenAPIToSkill } from "./converter.js";
-import type { OpenAPISpec, Renderer, Writer } from "./types.js";
+import type { OpenAPISpec, Renderer, SchemaObject, Writer } from "./types.js";
 
 // =============================================================================
 // Test Fixtures
@@ -166,6 +166,144 @@ describe("convertOpenAPIToSkill - file writing", () => {
 		expect(indexFile).toBeDefined();
 		expect(schemaFile1).toBeDefined();
 		expect(schemaFile2).toBeDefined();
+	});
+});
+
+// =============================================================================
+// Form Request Bodies
+// =============================================================================
+
+describe("convertOpenAPIToSkill - form request bodies", () => {
+	test.each([
+		{ contentType: "multipart/form-data", binaryUpload: false },
+		{ contentType: "application/x-www-form-urlencoded", binaryUpload: false },
+		{ contentType: "multipart/form-data", binaryUpload: true },
+	])("renders $contentType fields (binary upload: $binaryUpload)", async ({
+		contentType,
+		binaryUpload,
+	}) => {
+		const fields = [
+			"files",
+			"styleImageId",
+			"sceneId",
+			"composition",
+			"prompt",
+			"generationPath",
+			"subDir",
+		];
+		const properties: Record<string, SchemaObject> = Object.fromEntries(
+			fields.map((name) => [name, { type: "string" }]),
+		);
+		if (binaryUpload) {
+			properties.files = { type: "string", format: "binary" };
+		}
+		const spec: OpenAPISpec = {
+			...createMinimalSpec(),
+			paths: {
+				"/generate": {
+					post: {
+						operationId: "generateImage",
+						requestBody: {
+							required: true,
+							content: {
+								[contentType]: {
+									schema: {
+										type: "object",
+										properties,
+										...(binaryUpload ? { required: ["files"] } : {}),
+									},
+								},
+							},
+						},
+						responses: { "200": { description: "OK" } },
+					},
+				},
+			},
+		};
+		const { writer, writeFileCalls } = createMockWriter();
+
+		await convertOpenAPIToSkill(spec, { outputDir: "/out", writer });
+
+		const operation = writeFileCalls.find((c) =>
+			c.path.endsWith("/operations/generateImage.md"),
+		)?.content;
+		expect(operation).toBeDefined();
+		expect(operation).toContain("## Request Body");
+		expect(operation).toContain("**Required:** Yes");
+		expect(operation).toContain(`**Content Types:** \`${contentType}\``);
+		expect(operation).toContain("**Schema** (inline):");
+		for (const field of fields) {
+			const isBinary = binaryUpload && field === "files";
+			expect(operation).toContain(
+				`| \`${field}\` | ${isBinary ? "string (binary)" : "string"} | ${isBinary ? "Yes" : "No"} |  |`,
+			);
+		}
+	});
+});
+
+// =============================================================================
+// Complete Enums
+// =============================================================================
+
+describe("convertOpenAPIToSkill - complete enums", () => {
+	test.each([
+		{
+			type: "string" as const,
+			values: ["active", "inactive", "pending", "archived", "deleted"],
+		},
+		{ type: "integer" as const, values: [0, 1, 2, 3, 4] },
+	])("preserves all $type enum values in markdown tables", async ({
+		type,
+		values,
+	}) => {
+		const enumSchema: SchemaObject = { type, enum: values };
+		const objectSchema: SchemaObject = {
+			type: "object",
+			properties: {
+				state: enumSchema,
+				details: { type: "object", properties: { state: enumSchema } },
+			},
+		};
+		const spec: OpenAPISpec = {
+			...createMinimalSpec(),
+			paths: {
+				"/items": {
+					post: {
+						operationId: "createItem",
+						parameters: [{ name: "state", in: "query", schema: enumSchema }],
+						requestBody: {
+							content: { "application/json": { schema: objectSchema } },
+						},
+						responses: {
+							"200": {
+								description: "OK",
+								content: { "application/json": { schema: objectSchema } },
+							},
+						},
+					},
+				},
+			},
+			components: { schemas: { Item: objectSchema } },
+		};
+		const { writer, writeFileCalls } = createMockWriter();
+
+		await convertOpenAPIToSkill(spec, { outputDir: "/out", writer });
+
+		const operation = writeFileCalls.find((c) =>
+			c.path.endsWith("/operations/createItem.md"),
+		)?.content;
+		const schema = writeFileCalls.find((c) =>
+			c.path.endsWith("/schemas/Item/Item.md"),
+		)?.content;
+		const enumType = `enum: ${values.join(", ")}`;
+		expect(operation).toBeDefined();
+		expect(schema).toBeDefined();
+		// Query parameter, request fields, and response fields (including nested fields).
+		expect(operation?.split(enumType)).toHaveLength(6);
+		// Named schema fields, including nested fields.
+		expect(schema?.split(enumType)).toHaveLength(3);
+		expect(operation).not.toContain("...");
+		expect(schema).not.toContain("...");
 	});
 });
 

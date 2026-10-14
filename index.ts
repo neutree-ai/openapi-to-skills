@@ -5,14 +5,18 @@
 // Main converter
 export { convertOpenAPIToSkill } from "./src/converter.js";
 
+export type { OverlayAction, OverlayDocument } from "./src/overlay.js";
+export { applyOverlays } from "./src/overlay.js";
 // Parser, Renderer, Writer for DI
 export { createParser, Parser } from "./src/parser.js";
 export { createRenderer, TemplateRenderer } from "./src/renderer.js";
 // Types
 export type {
+	CompactPageDocument,
 	// Options
 	ConvertOptions,
 	GroupByStrategy,
+	Layout,
 	// OpenAPI types
 	OpenAPISpec,
 	OperationDocument,

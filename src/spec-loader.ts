@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { parse as parseYaml } from "yaml";
+import type { OverlayDocument } from "./overlay.js";
 import type { OpenAPISpec } from "./types.js";
 
 function isHttpUrl(input: string): boolean {
@@ -51,4 +52,9 @@ export async function loadSpecFromInput(input: string): Promise<OpenAPISpec> {
 
 	const content = await readFile(input, "utf-8");
 	return parseSpecContent(content, input);
+}
+
+export async function loadOverlay(input: string): Promise<OverlayDocument> {
+	const content = await readFile(input, "utf-8");
+	return parseSpecContent(content, input) as unknown as OverlayDocument;
 }
