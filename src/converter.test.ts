@@ -170,6 +170,78 @@ describe("convertOpenAPIToSkill - file writing", () => {
 });
 
 // =============================================================================
+// Form Request Bodies
+// =============================================================================
+
+describe("convertOpenAPIToSkill - form request bodies", () => {
+	test.each([
+		{ contentType: "multipart/form-data", binaryUpload: false },
+		{ contentType: "application/x-www-form-urlencoded", binaryUpload: false },
+		{ contentType: "multipart/form-data", binaryUpload: true },
+	])("renders $contentType fields (binary upload: $binaryUpload)", async ({
+		contentType,
+		binaryUpload,
+	}) => {
+		const fields = [
+			"files",
+			"styleImageId",
+			"sceneId",
+			"composition",
+			"prompt",
+			"generationPath",
+			"subDir",
+		];
+		const properties: Record<string, SchemaObject> = Object.fromEntries(
+			fields.map((name) => [name, { type: "string" }]),
+		);
+		if (binaryUpload) {
+			properties.files = { type: "string", format: "binary" };
+		}
+		const spec: OpenAPISpec = {
+			...createMinimalSpec(),
+			paths: {
+				"/generate": {
+					post: {
+						operationId: "generateImage",
+						requestBody: {
+							required: true,
+							content: {
+								[contentType]: {
+									schema: {
+										type: "object",
+										properties,
+										...(binaryUpload ? { required: ["files"] } : {}),
+									},
+								},
+							},
+						},
+						responses: { "200": { description: "OK" } },
+					},
+				},
+			},
+		};
+		const { writer, writeFileCalls } = createMockWriter();
+
+		await convertOpenAPIToSkill(spec, { outputDir: "/out", writer });
+
+		const operation = writeFileCalls.find((c) =>
+			c.path.endsWith("/operations/generateImage.md"),
+		)?.content;
+		expect(operation).toBeDefined();
+		expect(operation).toContain("## Request Body");
+		expect(operation).toContain("**Required:** Yes");
+		expect(operation).toContain(`**Content Types:** \`${contentType}\``);
+		expect(operation).toContain("**Schema** (inline):");
+		for (const field of fields) {
+			const isBinary = binaryUpload && field === "files";
+			expect(operation).toContain(
+				`| \`${field}\` | ${isBinary ? "string (binary)" : "string"} | ${isBinary ? "Yes" : "No"} |  |`,
+			);
+		}
+	});
+});
+
+// =============================================================================
 // Complete Enums
 // =============================================================================
 
