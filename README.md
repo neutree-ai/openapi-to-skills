@@ -33,6 +33,7 @@ npx openapi-to-skills https://example.com/openapi.yaml -o ./output
 | Option | Alias | Description |
 |--------|-------|-------------|
 | `--output` | `-o` | Output directory (default: `./output`) |
+| `--layout` | | Page layout: `default` or `compact` (default: `default`) |
 | `--name` | `-n` | Skill name (default: derived from API title) |
 | `--include-tags` | | Only include specified tags (comma-separated) |
 | `--exclude-tags` | | Exclude specified tags (comma-separated) |
@@ -42,8 +43,58 @@ npx openapi-to-skills https://example.com/openapi.yaml -o ./output
 | `--case-strategy` | | Strategy for case-insensitive filesystem safety: `lowercase` |
 | `--templates` | `-t` | Custom templates directory |
 | `--assets` | `-a` | Static assets directory overlaid onto the skill after generation |
+| `--overlay` | | OpenAPI Overlay files applied to the spec before conversion (comma-separated, in order) |
+| `--validator` | | Also write `tools/validate.mjs`, an offline check of an operation's input |
 | `--force` | `-f` | Overwrite existing output directory |
 | `--quiet` | `-q` | Suppress output except errors |
+
+### Compact Layout
+
+`--layout compact` writes a skill for an agent that reads one page to make one call:
+
+```bash
+npx openapi-to-skills ./openapi.json -o ./output --layout compact --group-by tags
+```
+
+- `references/resources/<resource>.md` has the resource's list operations, then one line per field of what they return: its type, how it can be filtered, and its description. For example `` - `memory`*: int64 [cmp] — Bytes. ``
+- Other operations have a page each in `references/operations/`, listed on their resources' pages.
+- What repeats across pages is stated once in `SKILL.md`: the shared list-query body, the filter rules, and the parameters, security and errors most operations share.
+- Schemas no included operation uses are left out.
+
+List calls are GET operations returning arrays, and operations whose body is made only of list-query keys (`where`, `orderBy`, `first`, `skip`, `after`, `before`, `last`) with a filter. That includes count calls taking the same body.
+
+Filters of the Prisma style (`<Entity>WhereInput`: the entity's fields, each alone for equality or with a suffix such as `_in` or `_contains`) are recognized by structure. A field whose suffixes are a well-known set is tagged with its name (`eq`, `cmp`, `str`, `rel`, `rels`…, explained in `SKILL.md`); any other set is spelled out, like `[= _in]`. A filter that does not fit the pattern is shown in full.
+
+Types are short: `T?` may be null, `T[]` is a list, `a|b|c` are the allowed values, and an object of a few scalar fields is written inline as `Name {a, b}`. Larger named objects are described once per page, two levels deep; long enums are listed once at the end of the page.
+
+The default layout is unchanged. Grouping, filtering, `--case-strategy lowercase`, overlays and asset overlays work with either layout. Custom compact templates are `compact-skill.md.eta`, `compact-resource.md.eta` and `compact-operation.md.eta`; each receives `title` and the generated Markdown `body`, and the skill template also receives `meta`. Programmatic custom renderers must implement the optional `renderCompactPage` hook to use compact mode. The programmatic option is `layout: "compact"` in `ConvertOptions`.
+
+### Overlays
+
+`--overlay` applies [OpenAPI Overlay 1.0](https://spec.openapis.org/overlay/v1.0.0.html) documents to the spec before anything is generated, so what the spec lacks can be added without editing it:
+
+```yaml
+overlay: 1.0.0
+info: { title: Notes, version: "1" }
+actions:
+  - target: $.components.schemas.Vm.properties.memory
+    update: { description: Bytes. }
+  - target: $.paths['/delete-vm']
+    remove: true
+```
+
+Descriptions land where the agent reads them: on a field's line, under a resource's heading, in the resource index. Removed paths are left out of the skill and of the validator. Targets support names (`.a`, `['a/b']`), `*`, array indexes and equality filters (`[?(@.name == 'x')]`); a target that matches nothing is an error, so an overlay cannot silently fall behind its spec.
+
+### Validator
+
+`--validator` adds `tools/validate.mjs` and its data to the skill. It checks a call against the spec offline:
+
+```bash
+node tools/validate.mjs '{"operation": "GetVms", "input": {"where": {"status": "RUNING"}}}'
+# input.where.status: "RUNING" is not valid; allowed: "DELETED", "RUNNING", "STOPPED", "SUSPENDED", "UNKNOWN"
+```
+
+`input` is the request body, or the parameters by name for an operation without one. It reports unknown operations and keys with the closest names, wrong types, enum values, missing required keys, and filter mistakes (a nested operator object, a suffix the field does not take). It needs only Node.
 
 ### Case-Insensitive Filesystem Safety
 

@@ -1,5 +1,7 @@
 import { join } from "node:path";
 import { consola } from "consola";
+import { writeCompactOutput } from "./compact.js";
+import { applyOverlays } from "./overlay.js";
 import { createParser } from "./parser.js";
 import { createRenderer, toFileName } from "./renderer.js";
 import type {
@@ -10,15 +12,21 @@ import type {
 	SkillDocument,
 	Writer,
 } from "./types.js";
+import { writeValidator } from "./validator.js";
 import { createWriter } from "./writer.js";
 
 /**
  * Convert an OpenAPI spec to Agent Skills format
  */
 export async function convertOpenAPIToSkill(
-	spec: OpenAPISpec,
+	input: OpenAPISpec,
 	options: ConvertOptions,
 ): Promise<void> {
+	// Overlays edit the spec itself, so every layout and the validator see
+	// the same edited spec.
+	const spec = options.overlays?.length
+		? applyOverlays(input, options.overlays)
+		: input;
 	const parser = createParser();
 	const renderer = options.renderer ?? createRenderer(options.templateDir);
 	const writer = options.writer ?? createWriter();
@@ -27,12 +35,36 @@ export async function convertOpenAPIToSkill(
 	let doc = parser.parse(spec, options.parser);
 
 	// Apply case strategy to IR before rendering
-	if (options.caseStrategy === "lowercase") {
+	if (options.layout !== "compact" && options.caseStrategy === "lowercase") {
 		doc = applyCaseStrategyLowercase(doc);
 	}
 
 	// Write output
-	await writeSkillOutput(doc, options.outputDir, renderer, writer);
+	if (options.layout === "compact") {
+		await writeCompactOutput(
+			spec,
+			doc,
+			options.outputDir,
+			renderer,
+			writer,
+			options.caseStrategy,
+		);
+		consola.success(
+			`Generated compact skill at: ${join(options.outputDir, doc.meta.name)}`,
+		);
+	} else {
+		await writeSkillOutput(doc, options.outputDir, renderer, writer);
+	}
+
+	if (options.validator) {
+		await writeValidator(
+			spec,
+			doc,
+			join(options.outputDir, doc.meta.name),
+			writer,
+		);
+		consola.success("Generated tools/validate.mjs");
+	}
 
 	// Overlay hand-authored static assets. Applied *after* generation so they
 	// survive `--force` (which wipes the skill dir before this) and override any

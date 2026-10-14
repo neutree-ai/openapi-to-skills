@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { Eta, type EtaConfig } from "eta";
 import type {
 	AuthSchemeDocument,
+	CompactPageDocument,
 	OperationDocument,
 	Renderer,
 	ResourceDocument,
@@ -83,6 +84,10 @@ export class TemplateRenderer implements Renderer {
 			totalSchemas,
 			toFileName,
 		});
+	}
+
+	renderCompactPage(doc: CompactPageDocument): string {
+		return this.render(`compact-${doc.kind}.md.eta`, doc);
 	}
 
 	renderResource(doc: ResourceDocument): string {

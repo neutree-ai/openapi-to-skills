@@ -6,7 +6,7 @@ import { defineCommand, runMain } from "citty";
 import { consola } from "consola";
 import { convertOpenAPIToSkill } from "./converter.js";
 import { toFileName } from "./renderer.js";
-import { loadSpecFromInput } from "./spec-loader.js";
+import { loadOverlay, loadSpecFromInput } from "./spec-loader.js";
 import type { OpenAPISpec } from "./types.js";
 import { validateArgs } from "./validate.js";
 
@@ -27,6 +27,12 @@ const main = defineCommand({
 			alias: "o",
 			description: "Output directory",
 			default: "./output",
+		},
+		layout: {
+			type: "string",
+			description:
+				"Page layout: 'default' or 'compact' (inline resource documentation)",
+			default: "default",
 		},
 		name: {
 			type: "string",
@@ -56,6 +62,17 @@ const main = defineCommand({
 			alias: "a",
 			description:
 				"Static assets directory overlaid onto the skill after generation (survives --force; overrides generated files of the same path)",
+		},
+		overlay: {
+			type: "string",
+			description:
+				"OpenAPI Overlay files applied to the spec before conversion (comma-separated, applied in order)",
+		},
+		validator: {
+			type: "boolean",
+			description:
+				"Also write tools/validate.mjs, an offline check of an operation's input against the spec",
+			default: false,
 		},
 		excludePaths: {
 			type: "string",
@@ -97,6 +114,12 @@ const main = defineCommand({
 		consola.start(`Reading OpenAPI spec: ${inputFile}`);
 
 		const spec: OpenAPISpec = await loadSpecFromInput(inputFile);
+		const overlays = await Promise.all(
+			(args.overlay?.split(",") ?? [])
+				.map((file) => file.trim())
+				.filter(Boolean)
+				.map((file) => loadOverlay(file)),
+		);
 
 		// Validate spec and options
 		let validated: ReturnType<typeof validateArgs>;
@@ -106,7 +129,7 @@ const main = defineCommand({
 			consola.error((err as Error).message);
 			process.exit(1);
 		}
-		const { groupBy, caseStrategy } = validated;
+		const { groupBy, caseStrategy, layout } = validated;
 
 		// Derive skill name for output path check
 		const skillName = args.name ?? toFileName(spec.info.title).toLowerCase();
@@ -156,8 +179,11 @@ const main = defineCommand({
 
 		await convertOpenAPIToSkill(spec, {
 			outputDir: args.output,
+			layout,
 			templateDir: args.templates,
 			assetsDir: args.assets,
+			overlays,
+			validator: args.validator,
 			caseStrategy,
 			parser: {
 				skillName: args.name,

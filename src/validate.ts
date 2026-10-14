@@ -1,4 +1,9 @@
-import type { CaseStrategy, GroupByStrategy, OpenAPISpec } from "./types.js";
+import type {
+	CaseStrategy,
+	GroupByStrategy,
+	Layout,
+	OpenAPISpec,
+} from "./types.js";
 
 const VALID_GROUP_BY: GroupByStrategy[] = ["tags", "path", "auto"];
 const VALID_CASE_STRATEGIES: CaseStrategy[] = ["lowercase"];
@@ -7,11 +12,13 @@ interface CLIArgs {
 	spec: OpenAPISpec;
 	groupBy: string;
 	caseStrategy?: string;
+	layout?: string;
 }
 
 interface ValidatedOptions {
 	groupBy: GroupByStrategy;
 	caseStrategy?: CaseStrategy;
+	layout?: Layout;
 }
 
 export function validateSpec(spec: OpenAPISpec): string | null {
@@ -53,5 +60,17 @@ export function validateArgs(args: CLIArgs): ValidatedOptions {
 	return {
 		groupBy: validateGroupBy(args.groupBy),
 		caseStrategy: validateCaseStrategy(args.caseStrategy),
+		...(args.layout === undefined
+			? {}
+			: { layout: validateLayout(args.layout) }),
 	};
+}
+
+export function validateLayout(value: string): Layout {
+	if (value !== "default" && value !== "compact") {
+		throw new Error(
+			`Invalid --layout value: ${value}. Must be 'default', 'compact'.`,
+		);
+	}
+	return value;
 }

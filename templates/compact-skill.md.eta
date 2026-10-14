@@ -1,0 +1,17 @@
+---
+name: <%= it.meta.name %>
+description: <%= it.meta.description %>. Use when working with the <%= it.meta.title %> or when the user needs to interact with this API.
+<% if (it.meta.license) { -%>
+license: <%= it.meta.license.name %><%= it.meta.license.url ? ` (${it.meta.license.url})` : "" %>
+<% } -%>
+metadata:
+  api-version: "<%= it.meta.version %>"
+  openapi-version: "<%= it.meta.openapiVersion %>"
+<% if (it.meta.contact) { -%>
+  contact: "<%= it.meta.contact %>"
+<% } -%>
+---
+
+# <%= it.title %>
+
+<%~ it.body %>

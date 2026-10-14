@@ -1,0 +1,138 @@
+openapi: 3.0.0
+info:
+  title: Compact Test API
+  version: 1.0.0
+servers:
+  - url: https://api.example.com
+paths:
+  /orders/list:
+    post:
+      tags: [Order]
+      operationId: listOrders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderListInput'
+      responses:
+        '200':
+          description: Matching orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+  /users/list:
+    post:
+      tags: [User]
+      operationId: listUsers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserListInput'
+      responses:
+        '200':
+          description: Matching users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+  /orders:
+    post:
+      tags: [Order]
+      operationId: createOrder
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+components:
+  schemas:
+    Order:
+      type: object
+      required: [id, state]
+      additionalProperties: false
+      properties:
+        id: {type: string}
+        total: {type: number}
+        state: {$ref: '#/components/schemas/State'}
+        previousState: {$ref: '#/components/schemas/State'}
+        customer: {$ref: '#/components/schemas/User'}
+        parent: {$ref: '#/components/schemas/Order'}
+    User:
+      type: object
+      required: [id]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        state: {$ref: '#/components/schemas/State'}
+    State:
+      type: string
+      enum: [active, inactive, pending, archived, deleted]
+    OrderWhereInput:
+      type: object
+      properties:
+        AND: {type: array, items: {$ref: '#/components/schemas/OrderWhereInput'}}
+        OR: {type: array, items: {$ref: '#/components/schemas/OrderWhereInput'}}
+        NOT: {type: array, items: {$ref: '#/components/schemas/OrderWhereInput'}}
+        id: {type: string}
+        id_in: {type: array, items: {type: string}}
+        total: {type: number}
+        total_gt: {type: number}
+        state: {$ref: '#/components/schemas/State'}
+        state_in: {type: array, items: {$ref: '#/components/schemas/State'}}
+    UserWhereInput:
+      type: object
+      properties:
+        AND: {type: array, items: {$ref: '#/components/schemas/UserWhereInput'}}
+        OR: {type: array, items: {$ref: '#/components/schemas/UserWhereInput'}}
+        NOT: {type: array, items: {$ref: '#/components/schemas/UserWhereInput'}}
+        id: {type: string}
+        id_in: {type: array, items: {type: string}}
+        name: {type: string}
+        name_contains: {type: string}
+    OrderListInput:
+      type: object
+      additionalProperties: false
+      properties:
+        where: {allOf: [{$ref: '#/components/schemas/OrderWhereInput'}], nullable: true}
+        orderBy: {$ref: '#/components/schemas/OrderOrderByInput'}
+        first: {type: integer, minimum: 1, default: 20}
+        skip: {type: integer, minimum: 0}
+        after: {type: string}
+        before: {type: string}
+        last: {type: integer}
+    UserListInput:
+      type: object
+      additionalProperties: false
+      properties:
+        where: {allOf: [{$ref: '#/components/schemas/UserWhereInput'}], nullable: true}
+        orderBy: {$ref: '#/components/schemas/UserOrderByInput'}
+        first: {type: integer, minimum: 1, default: 20}
+        skip: {type: integer, minimum: 0}
+        after: {type: string}
+        before: {type: string}
+        last: {type: integer}
+    OrderOrderByInput:
+      type: string
+      enum: [id_ASC, id_DESC, total_ASC, total_DESC]
+    UserOrderByInput:
+      type: string
+      enum: [id_ASC, id_DESC, name_ASC, name_DESC]
+    Unused:
+      type: object
+      properties:
+        value: {type: string}
