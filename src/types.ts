@@ -142,6 +142,14 @@ export interface OAuthFlowDocument {
 
 export type GroupByStrategy = "tags" | "path" | "auto";
 export type CaseStrategy = "lowercase";
+export type Layout = "default" | "compact";
+
+export interface CompactPageDocument {
+	kind: "skill" | "resource" | "schema";
+	title: string;
+	body: string;
+	meta?: SkillMeta;
+}
 
 export interface ParserOptions {
 	/** Skill name override */
@@ -173,6 +181,8 @@ export interface ParserFilter {
 // =============================================================================
 
 export interface Renderer {
+	/** Optional compact-layout template hook. Required for custom compact renderers. */
+	renderCompactPage?(doc: CompactPageDocument): string;
 	renderSkill(doc: SkillDocument): string;
 	renderResource(doc: ResourceDocument): string;
 	renderOperation(doc: OperationDocument): string;
@@ -207,6 +217,8 @@ export interface Writer {
 export interface ConvertOptions {
 	/** Output directory */
 	outputDir: string;
+	/** Page layout; defaults to the existing progressive-disclosure layout. */
+	layout?: Layout;
 	/** Parser options */
 	parser?: ParserOptions;
 	/** Custom templates directory (optional) */

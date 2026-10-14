@@ -10,9 +10,11 @@ export { createParser, Parser } from "./src/parser.js";
 export { createRenderer, TemplateRenderer } from "./src/renderer.js";
 // Types
 export type {
+	CompactPageDocument,
 	// Options
 	ConvertOptions,
 	GroupByStrategy,
+	Layout,
 	// OpenAPI types
 	OpenAPISpec,
 	OperationDocument,

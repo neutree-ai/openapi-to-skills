@@ -4,6 +4,7 @@ import {
 	validateArgs,
 	validateCaseStrategy,
 	validateGroupBy,
+	validateLayout,
 	validateSpec,
 } from "./validate.js";
 
@@ -137,5 +138,27 @@ describe("validateArgs", () => {
 		expect(() =>
 			validateArgs({ spec: validSpec, groupBy: "auto", caseStrategy: "bad" }),
 		).toThrow("--case-strategy");
+	});
+});
+
+describe("validateLayout", () => {
+	test.each(["default", "compact"])("accepts %s", (layout) => {
+		expect(validateLayout(layout)).toBe(layout);
+	});
+	test("rejects an unknown layout", () => {
+		expect(() => validateLayout("unknown")).toThrow("--layout");
+	});
+	test("passes the compact layout through argument validation", () => {
+		expect(
+			validateArgs({
+				spec: {
+					openapi: "3.0.0",
+					info: { title: "Test", version: "1" },
+					paths: {},
+				},
+				groupBy: "tags",
+				layout: "compact",
+			}).layout,
+		).toBe("compact");
 	});
 });

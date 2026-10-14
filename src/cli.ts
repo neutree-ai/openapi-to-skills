@@ -28,6 +28,12 @@ const main = defineCommand({
 			description: "Output directory",
 			default: "./output",
 		},
+		layout: {
+			type: "string",
+			description:
+				"Page layout: 'default' or 'compact' (inline resource documentation)",
+			default: "default",
+		},
 		name: {
 			type: "string",
 			alias: "n",
@@ -106,7 +112,7 @@ const main = defineCommand({
 			consola.error((err as Error).message);
 			process.exit(1);
 		}
-		const { groupBy, caseStrategy } = validated;
+		const { groupBy, caseStrategy, layout } = validated;
 
 		// Derive skill name for output path check
 		const skillName = args.name ?? toFileName(spec.info.title).toLowerCase();
@@ -156,6 +162,7 @@ const main = defineCommand({
 
 		await convertOpenAPIToSkill(spec, {
 			outputDir: args.output,
+			layout,
 			templateDir: args.templates,
 			assetsDir: args.assets,
 			caseStrategy,

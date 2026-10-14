@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import { consola } from "consola";
+import { writeCompactOutput } from "./compact.js";
 import { createParser } from "./parser.js";
 import { createRenderer, toFileName } from "./renderer.js";
 import type {
@@ -27,12 +28,26 @@ export async function convertOpenAPIToSkill(
 	let doc = parser.parse(spec, options.parser);
 
 	// Apply case strategy to IR before rendering
-	if (options.caseStrategy === "lowercase") {
+	if (options.layout !== "compact" && options.caseStrategy === "lowercase") {
 		doc = applyCaseStrategyLowercase(doc);
 	}
 
 	// Write output
-	await writeSkillOutput(doc, options.outputDir, renderer, writer);
+	if (options.layout === "compact") {
+		await writeCompactOutput(
+			spec,
+			doc,
+			options.outputDir,
+			renderer,
+			writer,
+			options.caseStrategy,
+		);
+		consola.success(
+			`Generated compact skill at: ${join(options.outputDir, doc.meta.name)}`,
+		);
+	} else {
+		await writeSkillOutput(doc, options.outputDir, renderer, writer);
+	}
 
 	// Overlay hand-authored static assets. Applied *after* generation so they
 	// survive `--force` (which wipes the skill dir before this) and override any

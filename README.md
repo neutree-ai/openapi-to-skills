@@ -33,6 +33,7 @@ npx openapi-to-skills https://example.com/openapi.yaml -o ./output
 | Option | Alias | Description |
 |--------|-------|-------------|
 | `--output` | `-o` | Output directory (default: `./output`) |
+| `--layout` | | Page layout: `default` or `compact` (default: `default`) |
 | `--name` | `-n` | Skill name (default: derived from API title) |
 | `--include-tags` | | Only include specified tags (comma-separated) |
 | `--exclude-tags` | | Exclude specified tags (comma-separated) |
@@ -44,6 +45,20 @@ npx openapi-to-skills https://example.com/openapi.yaml -o ./output
 | `--assets` | `-a` | Static assets directory overlaid onto the skill after generation |
 | `--force` | `-f` | Overwrite existing output directory |
 | `--quiet` | `-q` | Suppress output except errors |
+
+### Compact Layout
+
+Use `--layout compact` to keep operation details, request bodies, response fields, and filters on each resource page:
+
+```bash
+npx openapi-to-skills ./openapi.json -o ./output --layout compact --group-by tags
+```
+
+Compact output uses `references/resources/<resource>.md` for all operations, including non-list operations. Named schemas and complete enum lists are expanded once per page. Objects expand two levels; deeper object types are named without further expansion. Only schemas unreachable from the included operations get standalone pages under `references/schemas/`.
+
+For structurally recognized Prisma-style `…WhereInput` families, `SKILL.md` defines filter suffix meanings and classes once. Resource pages list each field's value type and its exact supported filter class. Unknown operators and operator-specific constraints retain their full schemas. Repeated list-query bodies share a shape in `SKILL.md`, while each resource supplies its concrete filter and ordering types.
+
+The default layout is unchanged. Grouping, filtering, `--case-strategy lowercase`, and asset overlays work with either layout. Custom compact templates are `compact-skill.md.eta`, `compact-resource.md.eta`, and `compact-schema.md.eta`; each receives `title` and generated Markdown `body`, and the skill template also receives `meta`. Programmatic custom renderers must implement the optional `renderCompactPage` hook to use compact mode. The programmatic option is `layout: "compact"` in `ConvertOptions`.
 
 ### Case-Insensitive Filesystem Safety
 
